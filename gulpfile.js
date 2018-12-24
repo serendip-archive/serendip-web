@@ -22,7 +22,13 @@ var run = function () {
         if (server.kill)
             server.kill();
 
-    server = child.spawn('node', ['bin/server.js', '-d', './www/localhost'], { stdio: 'inherit' });
+    server = child.spawn('node', [
+        'bin/server.js',
+        '--dir=www/localhost',
+        '--tunnel',
+        '--tunnel-subdomain=serendip'
+    ],
+        { stdio: 'inherit' });
 
 
     return Promise.resolve();

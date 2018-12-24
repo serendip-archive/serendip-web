@@ -25,3 +25,4 @@ npm i serendip-web -g
         serendip-web --port 8080 --tunnel
         serendip-web --demo --tunnel
         serendip-web --example --tunnel
+        serendip-web --example=newsite.com --tunnel

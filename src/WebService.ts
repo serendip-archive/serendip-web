@@ -143,8 +143,16 @@ export class WebService implements ServerServiceInterface {
             // if (domain == 'localhost' || domain == 'serendip.ir')
             //     domain = 'serendip.cloud';
 
+            if (Server.opts.logging == 'info') {
+                console.log(chalk.gray(`${Moment().format('HH:mm:ss')} ${domain} ${req.url} ${req.ip()} ${req.useragent()}`))
+            }
 
-            if (!WebService.options.sitePath) {
+            if (!WebService.options.sitePath && WebService.options.sitesPath) {
+
+
+                if (WebService.options.sitesPath.indexOf('.') === 0)
+                    WebService.options.sitesPath = join(process.cwd(), WebService.options.sitesPath);
+
 
                 sitePath = join(WebService.options.sitesPath, domain);
 
@@ -158,13 +166,16 @@ export class WebService implements ServerServiceInterface {
                     res.end();
                     return;
                 }
-            } else
+            } else {
+
                 sitePath = WebService.options.sitePath;
 
-            if (sitePath)
-                if (sitePath.startsWith('.')) {
-                    sitePath = join(process.cwd(), sitePath);
-                }
+                if (sitePath)
+                    if (sitePath.indexOf('.') === 0) {
+                        sitePath = join(process.cwd(), sitePath);
+                    }
+            }
+
 
             if (!fs.existsSync(sitePath)) {
 
@@ -172,7 +183,9 @@ export class WebService implements ServerServiceInterface {
                     error:
                     {
                         code: 500,
-                        message: 'website directory for ' + domain + ' not found!'
+                        message: 'website directory for ' + domain + ' not found!<br>' +
+                            'sitePath:' + sitePath + '<br>' +
+                            'sitesPath:' + WebService.options.sitesPath
                     }
                 }, WebService.getMessagePagePath(), sitePath, req, res);
                 return;

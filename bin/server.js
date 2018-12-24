@@ -50,11 +50,19 @@ var args = argv.option([
     },
     {
         name: 'example',
-        type: 'boolean'
+        type: 'string'
     },
     {
         name: 'dir',
         short: 'd',
+        type: 'string'
+    },
+    {
+        name: 'tunnel-hostname',
+        type: 'string'
+    },
+    {
+        name: 'tunnel-subdomain',
         type: 'string'
     }
 ]).run().options;
@@ -86,13 +94,14 @@ if (args.help) {
 }
 
 
-
+console.log(chalk.gray("Starting arguments:\n" + JSON.stringify(args, null, '\t') + '\n\n'));
 
 if (args.multi) {
 
     WebService.WebService.configure({
         sitesPath: args.dir || process.cwd()
     });
+
 } else {
 
     WebService.WebService.configure({
@@ -104,13 +113,13 @@ var demoPath = path.join(__dirname, '..', 'www', 'localhost');
 
 if (args.demo) {
     WebService.WebService.configure({
-        sitePath: args.demo
+        sitePath: demoPath
     });
 }
 
 if (args.example) {
 
-    var examplePath = path.join(process.cwd(), 'example');
+    var examplePath = path.join(process.cwd(), args.example.toString() != 'true' ? args.example : 'example');
 
     fs.copySync(demoPath, examplePath);
 
@@ -136,9 +145,13 @@ serendip.start({
 
         if (args.tunnel) {
 
-            var tunnel = localtunnel(args.port || 2080, function (err, tunnel) {
 
-                console.log(chalk.green(tunnel.url))
+            var tunnel = localtunnel(args.port || 2080, {
+                subdomain: args["tunnel-subdomain"],
+                local_host: args['tunnel-hostname'] || 'localhost'
+            }, function (err, tunnel) {
+
+                console.log('\n\tTemporary public url: ' + chalk.green(tunnel.url) + '\n')
 
             });
 

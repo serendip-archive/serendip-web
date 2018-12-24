@@ -102,7 +102,12 @@ class WebService {
             var sitePath, domain = req.headers.host.split(':')[0].replace('www.', '');
             // if (domain == 'localhost' || domain == 'serendip.ir')
             //     domain = 'serendip.cloud';
-            if (!WebService.options.sitePath) {
+            if (serendip_1.Server.opts.logging == 'info') {
+                console.log(chalk_1.default.gray(`${Moment().format('HH:mm:ss')} ${domain} ${req.url} ${req.ip()} ${req.useragent()}`));
+            }
+            if (!WebService.options.sitePath && WebService.options.sitesPath) {
+                if (WebService.options.sitesPath.indexOf('.') === 0)
+                    WebService.options.sitesPath = path_1.join(process.cwd(), WebService.options.sitesPath);
                 sitePath = path_1.join(WebService.options.sitesPath, domain);
                 if (!fs.existsSync(WebService.options.sitesPath)) {
                     var msg = 'WebService.options.sitesPath is not valid!';
@@ -112,17 +117,20 @@ class WebService {
                     return;
                 }
             }
-            else
+            else {
                 sitePath = WebService.options.sitePath;
-            if (sitePath)
-                if (sitePath.startsWith('.')) {
-                    sitePath = path_1.join(process.cwd(), sitePath);
-                }
+                if (sitePath)
+                    if (sitePath.indexOf('.') === 0) {
+                        sitePath = path_1.join(process.cwd(), sitePath);
+                    }
+            }
             if (!fs.existsSync(sitePath)) {
                 WebService.renderHbs({
                     error: {
                         code: 500,
-                        message: 'website directory for ' + domain + ' not found!'
+                        message: 'website directory for ' + domain + ' not found!<br>' +
+                            'sitePath:' + sitePath + '<br>' +
+                            'sitesPath:' + WebService.options.sitesPath
                     }
                 }, WebService.getMessagePagePath(), sitePath, req, res);
                 return;
