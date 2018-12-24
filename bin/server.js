@@ -35,6 +35,11 @@ var args = argv.option([
         type: 'boolean'
     },
     {
+        name: 'multi',
+        short: 'm',
+        type: 'boolean'
+    },
+    {
         name: 'tunnel',
         short: 't',
         type: 'boolean'
@@ -59,9 +64,14 @@ if (args.help) {
 
 
     console.log(chalk.bold('\nArguments:'));
+    console.log(chalk.green('\t -d,--dir to specify directory'));
     console.log(chalk.green('\t -p,--port to specify port'));
     console.log(chalk.green('\t -t,--tunnel to enable local tunnel'));
     console.log(chalk.green('\t -h,--help to view help'));
+    console.log(chalk.green('\t -m,--multi to serve multiple websites. matches the hostname with folder in directory'));
+    console.log(chalk.green('\t --example to create example folder with default template. (pick this in your first try)'));
+    console.log(chalk.green('\t --demo to preview without creating example folder'));
+
 
 
     console.log(chalk.bold('\nExamples:'));
@@ -75,10 +85,28 @@ if (args.help) {
 
 }
 
+
+
+
+if (args.multi) {
+
+    WebService.WebService.configure({
+        sitesPath: args.dir || process.cwd()
+    });
+} else {
+
+    WebService.WebService.configure({
+        sitePath: args.dir || process.cwd()
+    });
+}
+
 var demoPath = path.join(__dirname, '..', 'www', 'localhost');
-WebService.WebService.configure({
-    sitePath: args.demo ? demoPath : args.dir || process.cwd()
-});
+
+if (args.demo) {
+    WebService.WebService.configure({
+        sitePath: args.demo
+    });
+}
 
 if (args.example) {
 
