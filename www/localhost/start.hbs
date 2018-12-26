@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Mohsen Esmaeili <m-esm@hotmail.com>">
+
+    <title>Serendip web</title>
+    <link href="https://fonts.googleapis.com/css?family=Carter+One" rel="stylesheet">
+
+    <style>
+        body {
+            background: #111;
+            color: #fff;
+            text-align: center;
+            font-family: 'Carter One', cursive;
+            font-size: 13px;
+        }
+
+        a,
+        a:hover,
+        a:visited {
+            text-decoration: none;
+            color: #fff;
+            border-bottom: 1px solid #fff;
+            margin: 0 5px;
+
+        }
+
+        .code-box {
+            display: inline-block;
+            max-width: 340px;
+            width: 100%;
+            vertical-align: top;
+            margin: 15px;
+
+        }
+
+        .code-box p {
+            margin: 5px 0;
+            line-height: 18px;
+            font-size: 13px;
+            text-align: left;
+            font-family: Tahoma, tahoma, calibri;
+        }
+
+        .code-box .code {
+            padding: 10px;
+            background: #000;
+            min-height: 200px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            line-height: 18px;
+            text-align: left;
+            overflow: auto;
+
+        }
+
+
+        ::-webkit-scrollbar {
+            width: 2px;
+            height: 2px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #fff;
+        }
+
+        .string {
+            color: green;
+        }
+
+        .number {
+            color: darkorange;
+        }
+
+        .boolean {
+            color: blue;
+        }
+
+        .null {
+            color: magenta;
+        }
+
+        .key {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="site-wrapper">
+
+        <div class="site-wrapper-inner">
+
+            <div class="cover-container">
+
+
+                {{> header}}
+                <div class="inner cover">
+                    <h1 class="cover-heading">{{model.title}}</h1>
+                    <p class="lead">
+
+                        {{model.description}}
+
+                    </p>
+
+
+                    <div class="code-box">
+
+                        <p>model extended from start.hbs.json and returned model by start.hbs.js main async function</p>
+                        <pre class="code">{{~syntaxHighlight model~}}</pre>
+                    </div>
+
+                    <div class="code-box">
+
+                        <p>data from a json file named <a href="/data.json">data.json</a> in the folder root</p>
+                        <pre class="code">{{~syntaxHighlight data~}}</pre>
+                    </div>
+                </div>
+                {{> footer}}
+
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+
+{{> scripts}}
+
+</html>

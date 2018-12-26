@@ -1,5 +1,11 @@
-<div class="mastfoot">
-    <div class="inner">
-        <p>Sample <a href="https://getbootstrap.com">Bootstrap</a> page, by <a href="https://twitter.com/mdo">@mdo</a>.</p>
-    </div>
-</div>
+<footer>
+
+    {{#each data.footer.links}}
+    <a target="_blank" href="{{link}}">{{text}}</a>
+
+    {{#unless @last}}
+    |
+    {{/unless}}
+
+    {{/each}}
+</footer>

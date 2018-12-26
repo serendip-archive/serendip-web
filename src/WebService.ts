@@ -1,5 +1,5 @@
 import { ServerRouter, ServerServiceInterface, EmailService, Server, EmailModel, SmsIrService, ServerRequestInterface, ServerResponseInterface } from "serendip";
-import { join } from "path";
+import { join, basename } from "path";
 import * as fs from 'fs'
 import * as handlebars from 'handlebars';
 import * as _ from 'underscore';
@@ -7,6 +7,8 @@ import * as Request from 'request';
 import * as Moment from 'moment'
 import * as sUtils from 'serendip-utility'
 import chalk from "chalk";
+
+
 export class WebService implements ServerServiceInterface {
 
 
@@ -116,7 +118,8 @@ export class WebService implements ServerServiceInterface {
             }).map((partialFileName) => {
                 return join(partialsPath, partialFileName);
             }).forEach((partialFilePath) => {
-                var partialName = partialFilePath.split('/')[partialFilePath.split('/').length - 1].replace('.hbs', '');
+                var partialName = basename(partialFilePath).replace('.hbs', '');
+
                 viewEngline.registerPartial(partialName, fs.readFileSync(partialFilePath).toString());
             });
         }
@@ -224,9 +227,9 @@ export class WebService implements ServerServiceInterface {
             var filePath = join(sitePath, req.url);
             var hbsPath = filePath + (filePath.endsWith('/') ? 'index.hbs' : '.hbs');
 
-            var model = {};
+            var model: any = {};
 
-            var data = {};
+            var data: any = {};
             var hbsJsonPath = hbsPath + '.json';
 
             var siteDataPath = join(sitePath, 'data.json');
@@ -234,7 +237,8 @@ export class WebService implements ServerServiceInterface {
             if (fs.existsSync(siteDataPath)) {
 
                 try {
-                    data = _.extend({}, model, JSON.parse(siteDataPath));
+                    data = _.extend(data, JSON.parse(fs.readFileSync(siteDataPath).toString()));
+
                 } catch (error) {
 
                 }
@@ -242,7 +246,7 @@ export class WebService implements ServerServiceInterface {
 
             if (fs.existsSync(hbsJsonPath)) {
                 try {
-                    model = _.extend({}, model, JSON.parse(hbsJsonPath));
+                    model = _.extend(model, JSON.parse(fs.readFileSync(hbsJsonPath).toString()));
 
                 } catch (error) {
 

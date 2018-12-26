@@ -83,7 +83,7 @@ class WebService {
             }).map((partialFileName) => {
                 return path_1.join(partialsPath, partialFileName);
             }).forEach((partialFilePath) => {
-                var partialName = partialFilePath.split('/')[partialFilePath.split('/').length - 1].replace('.hbs', '');
+                var partialName = path_1.basename(partialFilePath).replace('.hbs', '');
                 viewEngline.registerPartial(partialName, fs.readFileSync(partialFilePath).toString());
             });
         }
@@ -162,14 +162,14 @@ class WebService {
             var siteDataPath = path_1.join(sitePath, 'data.json');
             if (fs.existsSync(siteDataPath)) {
                 try {
-                    data = _.extend({}, model, JSON.parse(siteDataPath));
+                    data = _.extend(data, JSON.parse(fs.readFileSync(siteDataPath).toString()));
                 }
                 catch (error) {
                 }
             }
             if (fs.existsSync(hbsJsonPath)) {
                 try {
-                    model = _.extend({}, model, JSON.parse(hbsJsonPath));
+                    model = _.extend(model, JSON.parse(fs.readFileSync(hbsJsonPath).toString()));
                 }
                 catch (error) {
                 }

@@ -1,6 +1,6 @@
 {
   "name": "serendip-web",
-  "version": "1.0.4",
+  "version": "1.0.10",
   "description": "",
   "main": "index.js",
   "bin": {
@@ -36,6 +36,7 @@
     "underscore": "^1.9.1"
   },
   "devDependencies": {
+    "@types/handlebars": "^4.0.40",
     "@types/node": "^10.12.18",
     "gulp": "^3.9.1",
     "gulp-clean": "^0.4.0",
