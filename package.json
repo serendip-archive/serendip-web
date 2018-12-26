@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "gulp test",
-    "start": "node dist/run.js"
+    "start": "node bin/server.js --demo -p 2080"
   },
   "repository": {
     "type": "git",

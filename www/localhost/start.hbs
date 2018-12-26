@@ -10,13 +10,43 @@
     <title>Serendip web</title>
     <link href="https://fonts.googleapis.com/css?family=Carter+One" rel="stylesheet">
 
+
     <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+
+
+        }
+
         body {
             background: #111;
             color: #fff;
             text-align: center;
             font-family: 'Carter One', cursive;
             font-size: 13px;
+            background-image: url('assets/bg.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+
+        }
+
+        .inner-body {
+            padding: 30px 0;
+            box-sizing: border-box;
+            min-height: 100vh;
+        }
+
+        .inner-body:before,
+        .inner-body:after {
+            content: ' ';
+            clear: both;
+            display: block;
+            height: 1px;
+            width: 100%;
         }
 
         a,
@@ -48,7 +78,7 @@
 
         .code-box .code {
             padding: 10px;
-            background: #000;
+            background: rgba(0, 0, 0, 0.7);
             min-height: 200px;
             border-radius: 10px;
             font-family: monospace;
@@ -59,6 +89,17 @@
 
         }
 
+        .npm {
+            text-align: right;
+            font-size: 15px;
+            font-family: monospace;
+            text-align: left;
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
 
         ::-webkit-scrollbar {
             width: 2px;
@@ -97,44 +138,39 @@
 
 <body>
 
-    <div class="site-wrapper">
 
-        <div class="site-wrapper-inner">
+    <div class="inner-body">
+        {{> header}}
 
-            <div class="cover-container">
+        <h1 class="cover-heading">{{model.title}}</h1>
+        <p class="lead">
 
+            {{model.description}}
 
-                {{> header}}
-                <div class="inner cover">
-                    <h1 class="cover-heading">{{model.title}}</h1>
-                    <p class="lead">
-
-                        {{model.description}}
-
-                    </p>
+        </p>
 
 
-                    <div class="code-box">
-
-                        <p>model extended from start.hbs.json and returned model by start.hbs.js main async function</p>
-                        <pre class="code">{{~syntaxHighlight model~}}</pre>
-                    </div>
-
-                    <div class="code-box">
-
-                        <p>data from a json file named <a href="/data.json">data.json</a> in the folder root</p>
-                        <pre class="code">{{~syntaxHighlight data~}}</pre>
-                    </div>
-                </div>
-                {{> footer}}
-
-
-
-            </div>
-
+        <div class="npm">
+            > npm i serendip-web -g
+            <br>
+            > serendip-web --demo --tunnel
         </div>
 
+        <div class="code-box">
+
+            <p>model extended from start.hbs.json and returned model by start.hbs.js main async function</p>
+            <pre class="code">{{~syntaxHighlight model~}}</pre>
+        </div>
+
+        <div class="code-box">
+
+            <p>data from a json file named <a href="/data.json">data.json</a> in the folder root</p>
+            <pre class="code">{{~syntaxHighlight data~}}</pre>
+        </div>
+        {{> footer}}
     </div>
+
+
 
 </body>
 
