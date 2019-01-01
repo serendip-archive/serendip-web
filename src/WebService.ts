@@ -224,7 +224,7 @@ export class WebService implements ServerServiceInterface {
 
             if (!sitePath.endsWith('/'))
                 sitePath += '/';
-            var filePath = join(sitePath, req.url);
+            var filePath = join(sitePath, req.url.split('?')[0]);
             var hbsPath = filePath + (filePath.endsWith('/') ? 'index.hbs' : '.hbs');
 
             var model: any = {};

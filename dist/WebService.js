@@ -154,7 +154,7 @@ class WebService {
             }
             if (!sitePath.endsWith('/'))
                 sitePath += '/';
-            var filePath = path_1.join(sitePath, req.url);
+            var filePath = path_1.join(sitePath, req.url.split('?')[0]);
             var hbsPath = filePath + (filePath.endsWith('/') ? 'index.hbs' : '.hbs');
             var model = {};
             var data = {};
