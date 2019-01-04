@@ -114,7 +114,7 @@ export class WebService implements ServerServiceInterface {
   }
 
   static async renderHbs(
-    inputObjects: { localization?: any; model?: any; data?: any; error?: any },
+    inputObjects: { locale?: any; model?: any; data?: any; error?: any },
     hbsPath,
     sitePath,
     req,
@@ -125,6 +125,8 @@ export class WebService implements ServerServiceInterface {
       hbsTemplate = viewEngline.compile(
         fs.readFileSync(hbsPath).toString() || ""
       );
+
+    viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
     var hbsJsPath = hbsPath + ".js";
 
     if (fs.existsSync(hbsJsPath)) {
@@ -339,11 +341,9 @@ export class WebService implements ServerServiceInterface {
             rtl: locales[urlLocale][2] || null
           };
 
-          locale = urlLocale = urlLocale.toLowerCase();
+          urlLocale = urlLocale.toLowerCase();
         } else urlLocale = null;
       }
-
-      console.log(urlLocale, locale, req.url);
 
       if (locale) {
         var localeDataPath = join(sitePath, "data." + locale + ".json");
@@ -357,6 +357,21 @@ export class WebService implements ServerServiceInterface {
           } catch (error) {}
         } else fs.writeFileSync(localeDataPath, "{}");
       }
+
+      if (urlLocale) {
+        var urlLocaleDataPath = join(sitePath, "data." + urlLocale + ".json");
+
+        if (fs.existsSync(urlLocaleDataPath)) {
+          try {
+            data = _.extend(
+              data,
+              JSON.parse(fs.readFileSync(urlLocaleDataPath).toString())
+            );
+          } catch (error) {}
+        } else fs.writeFileSync(urlLocaleDataPath, "{}");
+      }
+
+      if (urlLocale) locale = urlLocale;
 
       var filePath = join(sitePath, req.url.split("?")[0] || "/");
 
@@ -375,7 +390,7 @@ export class WebService implements ServerServiceInterface {
       // return;
       if (fs.existsSync(hbsPath)) {
         WebService.renderHbs(
-          { model, data, localization },
+          { model, data, locale: localization },
           hbsPath,
           sitePath,
           req,

@@ -78,6 +78,7 @@ class WebService {
     }
     static async renderHbs(inputObjects, hbsPath, sitePath, req, res) {
         var render, viewEngline = handlebars.noConflict(), hbsTemplate = viewEngline.compile(fs.readFileSync(hbsPath).toString() || "");
+        viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
         var hbsJsPath = hbsPath + ".js";
         if (fs.existsSync(hbsJsPath)) {
             var hbsJsResult = await WebService.executeHbsJs(fs.readFileSync(hbsJsPath).toString(), sitePath, req, res);
@@ -220,12 +221,11 @@ class WebService {
                         englishName: locales_1.locales[urlLocale][1],
                         rtl: locales_1.locales[urlLocale][2] || null
                     };
-                    locale = urlLocale = urlLocale.toLowerCase();
+                    urlLocale = urlLocale.toLowerCase();
                 }
                 else
                     urlLocale = null;
             }
-            console.log(urlLocale, locale, req.url);
             if (locale) {
                 var localeDataPath = path_1.join(sitePath, "data." + locale + ".json");
                 if (fs.existsSync(localeDataPath)) {
@@ -237,6 +237,19 @@ class WebService {
                 else
                     fs.writeFileSync(localeDataPath, "{}");
             }
+            if (urlLocale) {
+                var urlLocaleDataPath = path_1.join(sitePath, "data." + urlLocale + ".json");
+                if (fs.existsSync(urlLocaleDataPath)) {
+                    try {
+                        data = _.extend(data, JSON.parse(fs.readFileSync(urlLocaleDataPath).toString()));
+                    }
+                    catch (error) { }
+                }
+                else
+                    fs.writeFileSync(urlLocaleDataPath, "{}");
+            }
+            if (urlLocale)
+                locale = urlLocale;
             var filePath = path_1.join(sitePath, req.url.split("?")[0] || "/");
             var hbsPath = filePath + (filePath.endsWith("/") ? "index.hbs" : ".hbs");
             if (fs.existsSync(hbsJsonPath)) {
@@ -248,7 +261,7 @@ class WebService {
             // res.json({ domain, sitePath, url: req.url, filePath, fileExist: fs.existsSync(filePath), hbsPath });
             // return;
             if (fs.existsSync(hbsPath)) {
-                WebService.renderHbs({ model, data, localization }, hbsPath, sitePath, req, res);
+                WebService.renderHbs({ model, data, locale: localization }, hbsPath, sitePath, req, res);
             }
             else {
                 if (!fs.existsSync(filePath)) {
