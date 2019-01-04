@@ -18,7 +18,7 @@ export class StatusController {
 
   routes: ServerEndpointInterface = {
     method: "get",
-    publicAccess  : true,
+    publicAccess: true,
     actions: [
       (req, res, next, done) => {
         setTimeout(() => {
@@ -38,7 +38,7 @@ export class StatusController {
 
   services: ServerEndpointInterface = {
     method: "get",
-    publicAccess  : true,
+    publicAccess: true,
     actions: [
       (req, res, next, done) => {
         var model = _.keys(Server.services);
