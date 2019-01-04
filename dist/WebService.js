@@ -124,8 +124,6 @@ class WebService {
     static async processRequest(req, res, next, done) {
         if (req.url.indexOf("/api") !== 0) {
             var sitePath, locale, domain = req.headers.host.split(":")[0].replace("www.", "");
-            // if (domain == 'localhost' || domain == 'serendip.ir')
-            //     domain = 'serendip.cloud';
             if (serendip_1.Server.opts.logging == "info") {
                 console.log(chalk_1.default.gray(`${Moment().format("HH:mm:ss")} ${domain} ${req.url} ${req.ip()} ${req.useragent()}`));
             }
@@ -193,8 +191,7 @@ class WebService {
             }
             if (data.localization && data.localization.default)
                 locale = data.localization.default;
-            if (!sitePath.endsWith("/"))
-                sitePath += "/";
+            //  if (!sitePath.endsWith("/") || ) sitePath += "/";
             var localization = {};
             if (locale) {
                 var tempLocale = locale.split("-")[0] + "-" + locale.split("-")[1].toUpperCase();
@@ -251,7 +248,7 @@ class WebService {
             if (urlLocale)
                 locale = urlLocale;
             var filePath = path_1.join(sitePath, req.url.split("?")[0] || "/");
-            var hbsPath = filePath + (filePath.endsWith("/") ? "index.hbs" : ".hbs");
+            var hbsPath = filePath + ((filePath.endsWith("/") || filePath.endsWith("\\")) ? "index.hbs" : ".hbs");
             if (fs.existsSync(hbsJsonPath)) {
                 try {
                     model = _.extend(model, JSON.parse(fs.readFileSync(hbsJsonPath).toString()));

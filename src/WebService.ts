@@ -25,8 +25,8 @@ export class WebService implements ServerServiceInterface {
     sitesPath?: string;
     sitePath?: string;
   } = {
-    sitesPath: join(__dirname, "..", "www")
-  };
+      sitesPath: join(__dirname, "..", "www")
+    };
 
   static configure(opts?: typeof WebService.options) {
     WebService.options = _.extend(WebService.options, opts || {});
@@ -51,7 +51,7 @@ export class WebService implements ServerServiceInterface {
       hbsJsScript = script;
 
     try {
-      hbsJsFunc = (function() {
+      hbsJsFunc = (function () {
         // evaluated script will have access to Server and Modules
         const Server = {
           request: req,
@@ -94,7 +94,7 @@ export class WebService implements ServerServiceInterface {
     if (typeof hbsJsFunc === "function") {
       var hbsJsFuncResult;
       try {
-        hbsJsFuncResult = (async function() {
+        hbsJsFuncResult = (async function () {
           return await hbsJsFunc();
         })();
       } catch (e) {
@@ -120,6 +120,8 @@ export class WebService implements ServerServiceInterface {
     req,
     res: ServerResponseInterface
   ) {
+
+
     var render,
       viewEngline = handlebars.noConflict(),
       hbsTemplate = viewEngline.compile(
@@ -194,14 +196,11 @@ export class WebService implements ServerServiceInterface {
         locale: string,
         domain = req.headers.host.split(":")[0].replace("www.", "");
 
-      // if (domain == 'localhost' || domain == 'serendip.ir')
-      //     domain = 'serendip.cloud';
-
       if (Server.opts.logging == "info") {
         console.log(
           chalk.gray(
             `${Moment().format("HH:mm:ss")} ${domain} ${
-              req.url
+            req.url
             } ${req.ip()} ${req.useragent()}`
           )
         );
@@ -301,13 +300,13 @@ export class WebService implements ServerServiceInterface {
             data,
             JSON.parse(fs.readFileSync(siteDataPath).toString())
           );
-        } catch (error) {}
+        } catch (error) { }
       }
 
       if (data.localization && data.localization.default)
         locale = data.localization.default;
 
-      if (!sitePath.endsWith("/")) sitePath += "/";
+      //  if (!sitePath.endsWith("/") || ) sitePath += "/";
 
       var localization = {};
 
@@ -354,7 +353,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(localeDataPath).toString())
             );
-          } catch (error) {}
+          } catch (error) { }
         } else fs.writeFileSync(localeDataPath, "{}");
       }
 
@@ -367,7 +366,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(urlLocaleDataPath).toString())
             );
-          } catch (error) {}
+          } catch (error) { }
         } else fs.writeFileSync(urlLocaleDataPath, "{}");
       }
 
@@ -375,7 +374,7 @@ export class WebService implements ServerServiceInterface {
 
       var filePath = join(sitePath, req.url.split("?")[0] || "/");
 
-      var hbsPath = filePath + (filePath.endsWith("/") ? "index.hbs" : ".hbs");
+      var hbsPath = filePath + ((filePath.endsWith("/") || filePath.endsWith("\\")) ? "index.hbs" : ".hbs");
 
       if (fs.existsSync(hbsJsonPath)) {
         try {
@@ -383,7 +382,7 @@ export class WebService implements ServerServiceInterface {
             model,
             JSON.parse(fs.readFileSync(hbsJsonPath).toString())
           );
-        } catch (error) {}
+        } catch (error) { }
       }
 
       // res.json({ domain, sitePath, url: req.url, filePath, fileExist: fs.existsSync(filePath), hbsPath });
@@ -415,7 +414,7 @@ export class WebService implements ServerServiceInterface {
 
           return;
         }
-        ServerRouter.processRequestToStatic(req, res, () => {}, sitePath);
+        ServerRouter.processRequestToStatic(req, res, () => { }, sitePath);
       }
     } else {
       next();
@@ -436,7 +435,7 @@ export class WebService implements ServerServiceInterface {
     return join(__dirname, "..", "www", "message.hbs");
   }
 
-  constructor() {}
+  constructor() { }
 
-  async start() {}
+  async start() { }
 }
