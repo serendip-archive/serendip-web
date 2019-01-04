@@ -18,6 +18,7 @@ import * as sUtils from "serendip-utility";
 import chalk from "chalk";
 
 import * as htmlMinifier from "html-minifier";
+import { locales } from "./locales";
 
 export class WebService implements ServerServiceInterface {
   static options: {
@@ -32,6 +33,13 @@ export class WebService implements ServerServiceInterface {
   }
   static dependencies = [];
 
+  /**
+   *
+   * @param script string to eval
+   * @param sitePath root path of site
+   * @param req server request
+   * @param res server response
+   */
   static executeHbsJs(
     script: string,
     sitePath,
@@ -44,11 +52,13 @@ export class WebService implements ServerServiceInterface {
 
     try {
       hbsJsFunc = (function() {
-        let Server = {
+        // evaluated script will have access to Server and Modules
+        const Server = {
           request: req,
           response: res
         };
-        let Modules = {
+
+        const Modules = {
           _,
           request: Request,
           moment: Moment,
@@ -56,7 +66,8 @@ export class WebService implements ServerServiceInterface {
           utils: sUtils
         };
 
-        let process = null;
+        // overwrite to block access to global process
+        const process = null;
 
         return eval(hbsJsScript);
       })();
@@ -65,9 +76,9 @@ export class WebService implements ServerServiceInterface {
     }
 
     var handleError = () => {
-      res.statusCode = 500;
+      if (typeof hbsJsError != "undefined" && hbsJsError) {
+        res.statusCode = 500;
 
-      if (hbsJsError)
         WebService.renderHbs(
           { error: { message: hbsJsError, code: 500 } },
           WebService.getMessagePagePath(),
@@ -75,6 +86,7 @@ export class WebService implements ServerServiceInterface {
           req,
           res
         );
+      }
     };
 
     handleError();
@@ -102,7 +114,7 @@ export class WebService implements ServerServiceInterface {
   }
 
   static async renderHbs(
-    inputObjects: { model?: any; data?: any; error?: any },
+    inputObjects: { localization?: any; model?: any; data?: any; error?: any },
     hbsPath,
     sitePath,
     req,
@@ -156,17 +168,16 @@ export class WebService implements ServerServiceInterface {
 
     if (!res.headersSent) res.setHeader("content-type", "text/html");
 
-
     res.send(
       htmlMinifier.minify(render, {
         collapseWhitespace: true,
         minifyCSS: true,
-        minifyJS : true,
-        minifyURLs:true,
+        minifyJS: true,
+        minifyURLs: true,
         removeAttributeQuotes: true,
-        sortAttributes : true,
-        sortClassName : true,
-        useShortDoctype : true
+        sortAttributes: true,
+        sortClassName: true,
+        useShortDoctype: true
       })
     );
   }
@@ -178,6 +189,7 @@ export class WebService implements ServerServiceInterface {
   ) {
     if (req.url.indexOf("/api") !== 0) {
       var sitePath: string,
+        locale: string,
         domain = req.headers.host.split(":")[0].replace("www.", "");
 
       // if (domain == 'localhost' || domain == 'serendip.ir')
@@ -274,16 +286,12 @@ export class WebService implements ServerServiceInterface {
         return;
       }
 
-      if (!sitePath.endsWith("/")) sitePath += "/";
-      var filePath = join(sitePath, req.url.split("?")[0]);
-      var hbsPath = filePath + (filePath.endsWith("/") ? "index.hbs" : ".hbs");
+      var siteDataPath = join(sitePath, "data.json");
 
       var model: any = {};
 
       var data: any = {};
       var hbsJsonPath = hbsPath + ".json";
-
-      var siteDataPath = join(sitePath, "data.json");
 
       if (fs.existsSync(siteDataPath)) {
         try {
@@ -293,6 +301,66 @@ export class WebService implements ServerServiceInterface {
           );
         } catch (error) {}
       }
+
+      if (data.localization && data.localization.default)
+        locale = data.localization.default;
+
+      if (!sitePath.endsWith("/")) sitePath += "/";
+
+      var localization = {};
+
+      if (locale) {
+        var tempLocale =
+          locale.split("-")[0] + "-" + locale.split("-")[1].toUpperCase();
+        localization = {
+          code: tempLocale.toLowerCase(),
+          localName: locales[tempLocale][0],
+          englishName: locales[tempLocale][1],
+          rtl: locales[tempLocale][2] || null
+        };
+      }
+
+      var urlLocale = req.url.split("?")[0].split("/")[1] || "";
+      if (urlLocale.indexOf("-") == 2) {
+        urlLocale =
+          urlLocale.split("-")[0] + "-" + urlLocale.split("-")[1].toUpperCase();
+      }
+
+      if (urlLocale) {
+        if (locales[urlLocale]) {
+          req.url = req.url
+            .replace("/" + urlLocale, "")
+            .replace("/" + urlLocale.toLowerCase(), "");
+
+          localization = {
+            code: urlLocale.toLowerCase(),
+            localName: locales[urlLocale][0],
+            englishName: locales[urlLocale][1],
+            rtl: locales[urlLocale][2] || null
+          };
+
+          locale = urlLocale = urlLocale.toLowerCase();
+        } else urlLocale = null;
+      }
+
+      console.log(urlLocale, locale, req.url);
+
+      if (locale) {
+        var localeDataPath = join(sitePath, "data." + locale + ".json");
+
+        if (fs.existsSync(localeDataPath)) {
+          try {
+            data = _.extend(
+              data,
+              JSON.parse(fs.readFileSync(localeDataPath).toString())
+            );
+          } catch (error) {}
+        } else fs.writeFileSync(localeDataPath, "{}");
+      }
+
+      var filePath = join(sitePath, req.url.split("?")[0] || "/");
+
+      var hbsPath = filePath + (filePath.endsWith("/") ? "index.hbs" : ".hbs");
 
       if (fs.existsSync(hbsJsonPath)) {
         try {
@@ -306,7 +374,13 @@ export class WebService implements ServerServiceInterface {
       // res.json({ domain, sitePath, url: req.url, filePath, fileExist: fs.existsSync(filePath), hbsPath });
       // return;
       if (fs.existsSync(hbsPath)) {
-        WebService.renderHbs({ model, data }, hbsPath, sitePath, req, res);
+        WebService.renderHbs(
+          { model, data, localization },
+          hbsPath,
+          sitePath,
+          req,
+          res
+        );
       } else {
         if (!fs.existsSync(filePath)) {
           res.statusCode = 404;

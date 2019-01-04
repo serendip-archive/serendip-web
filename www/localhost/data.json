@@ -1,15 +1,5 @@
 {
-    "footer": {
-        "links": [
-            {
-                "text": "serendip agency",
-                "link": "https://serendip.agency"
-            },
-            {
-                "text": "github",
-                "link": "https://github.com/m-esm/serendip-web"
-            }
-        ]
-       
-    }
+  "localization": {
+    "default": "fa-ir"
+  }
 }
