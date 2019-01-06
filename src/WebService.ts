@@ -19,6 +19,7 @@ import chalk from "chalk";
 
 import * as htmlMinifier from "html-minifier";
 import { locales } from "./locales";
+import * as glob from "glob";
 
 export class WebService implements ServerServiceInterface {
   static options: {
@@ -113,6 +114,11 @@ export class WebService implements ServerServiceInterface {
     }
   }
 
+  static readDirWithGlob(pathPattern): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      glob(join(pathPattern), (err, matches) => resolve(matches));
+    });
+  }
   static async renderHbs(
     inputObjects: { locale?: any; model?: any; data?: any; error?: any },
     hbsPath,
@@ -127,6 +133,9 @@ export class WebService implements ServerServiceInterface {
       );
 
     viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
+    viewEngline.registerHelper("append", (...items) =>
+      items.filter(p => typeof p == "string" || typeof p == "number").join("")
+    );
     viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
     var hbsJsPath = hbsPath + ".js";
 
@@ -146,21 +155,19 @@ export class WebService implements ServerServiceInterface {
     }
     var partialsPath = join(sitePath, "_partials");
     if (fs.existsSync(partialsPath)) {
-      fs.readdirSync(partialsPath)
-        .filter(item => {
-          return item.endsWith(".hbs");
-        })
-        .map(partialFileName => {
-          return join(partialsPath, partialFileName);
-        })
-        .forEach(partialFilePath => {
-          var partialName = basename(partialFilePath).replace(".hbs", "");
+      (await WebService.readDirWithGlob(
+        join(partialsPath, "**/*.hbs")
+      )).forEach(partialFilePath => {
+        var partialName = partialFilePath.replace(partialsPath, "");
+          partialName = partialName.substr(1).replace("/","-").replace(".hbs","");
 
-          viewEngline.registerPartial(
-            partialName,
-            fs.readFileSync(partialFilePath).toString()
-          );
-        });
+        console.log(partialName);
+
+        viewEngline.registerPartial(
+          partialName,
+          fs.readFileSync(partialFilePath).toString()
+        );
+      });
     }
 
     try {

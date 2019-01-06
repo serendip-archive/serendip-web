@@ -11,6 +11,7 @@ const sUtils = require("serendip-utility");
 const chalk_1 = require("chalk");
 const htmlMinifier = require("html-minifier");
 const locales_1 = require("./locales");
+const glob = require("glob");
 class WebService {
     constructor() { }
     static configure(opts) {
@@ -76,9 +77,15 @@ class WebService {
             return { model: {} };
         }
     }
+    static readDirWithGlob(pathPattern) {
+        return new Promise((resolve, reject) => {
+            glob(path_1.join(pathPattern), (err, matches) => resolve(matches));
+        });
+    }
     static async renderHbs(inputObjects, hbsPath, sitePath, req, res) {
         var render, viewEngline = handlebars.noConflict(), hbsTemplate = viewEngline.compile(fs.readFileSync(hbsPath).toString() || "");
         viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
+        viewEngline.registerHelper("append", (...items) => items.filter(p => typeof p == "string" || typeof p == "number").join(""));
         viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
         var hbsJsPath = hbsPath + ".js";
         if (fs.existsSync(hbsJsPath)) {
@@ -91,15 +98,10 @@ class WebService {
         }
         var partialsPath = path_1.join(sitePath, "_partials");
         if (fs.existsSync(partialsPath)) {
-            fs.readdirSync(partialsPath)
-                .filter(item => {
-                return item.endsWith(".hbs");
-            })
-                .map(partialFileName => {
-                return path_1.join(partialsPath, partialFileName);
-            })
-                .forEach(partialFilePath => {
-                var partialName = path_1.basename(partialFilePath).replace(".hbs", "");
+            (await WebService.readDirWithGlob(path_1.join(partialsPath, "**/*.hbs"))).forEach(partialFilePath => {
+                var partialName = partialFilePath.replace(partialsPath, "");
+                partialName = partialName.substr(1).replace("/", "-").replace(".hbs", "");
+                console.log(partialName);
                 viewEngline.registerPartial(partialName, fs.readFileSync(partialFilePath).toString());
             });
         }
