@@ -79,6 +79,7 @@ class WebService {
     static async renderHbs(inputObjects, hbsPath, sitePath, req, res) {
         var render, viewEngline = handlebars.noConflict(), hbsTemplate = viewEngline.compile(fs.readFileSync(hbsPath).toString() || "");
         viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
+        viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
         var hbsJsPath = hbsPath + ".js";
         if (fs.existsSync(hbsJsPath)) {
             var hbsJsResult = await WebService.executeHbsJs(fs.readFileSync(hbsJsPath).toString(), sitePath, req, res);
@@ -248,7 +249,10 @@ class WebService {
             if (urlLocale)
                 locale = urlLocale;
             var filePath = path_1.join(sitePath, req.url.split("?")[0] || "/");
-            var hbsPath = filePath + ((filePath.endsWith("/") || filePath.endsWith("\\")) ? "index.hbs" : ".hbs");
+            var hbsPath = filePath +
+                (filePath.endsWith("/") || filePath.endsWith("\\")
+                    ? "index.hbs"
+                    : ".hbs");
             if (fs.existsSync(hbsJsonPath)) {
                 try {
                     model = _.extend(model, JSON.parse(fs.readFileSync(hbsJsonPath).toString()));
