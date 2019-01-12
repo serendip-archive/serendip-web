@@ -1,7 +1,7 @@
 {
   "name": "serendip-web",
   "version": "1.0.21",
-  "description": "",
+  "description": "It's a lightweight web server for creating websites using handlebars and javascript.",
   "main": "index.js",
   "bin": {
     "serendip-web": "./bin/server.js"
