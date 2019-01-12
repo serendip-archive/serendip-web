@@ -8,7 +8,7 @@ import {
   ServerRequestInterface,
   ServerResponseInterface
 } from "serendip";
-import { join, basename } from "path";
+import { join, basename, dirname } from "path";
 import * as fs from "fs";
 import * as handlebars from "handlebars";
 import * as _ from "underscore";
@@ -26,8 +26,8 @@ export class WebService implements ServerServiceInterface {
     sitesPath?: string;
     sitePath?: string;
   } = {
-    sitesPath: join(__dirname, "..", "www")
-  };
+      sitesPath: join(__dirname, "..", "www")
+    };
 
   static configure(opts?: typeof WebService.options) {
     WebService.options = _.extend(WebService.options, opts || {});
@@ -52,7 +52,7 @@ export class WebService implements ServerServiceInterface {
       hbsJsScript = script;
 
     try {
-      hbsJsFunc = (function() {
+      hbsJsFunc = (function () {
         // evaluated script will have access to Server and Modules
         const Server = {
           request: req,
@@ -95,7 +95,7 @@ export class WebService implements ServerServiceInterface {
     if (typeof hbsJsFunc === "function") {
       var hbsJsFuncResult;
       try {
-        hbsJsFuncResult = (async function() {
+        hbsJsFuncResult = (async function () {
           return await hbsJsFunc();
         })();
       } catch (e) {
@@ -158,11 +158,12 @@ export class WebService implements ServerServiceInterface {
       (await WebService.readDirWithGlob(
         join(partialsPath, "**/*.hbs")
       )).forEach(partialFilePath => {
-        var partialName = partialFilePath.replace(partialsPath, "");
-        partialName = partialName
-          .substr(1)
-          .replace("/", "-")
-          .replace(".hbs", "");
+
+
+        var partialName = partialFilePath.replace(partialsPath.replace(/\\/g, '/'), '').replace('.hbs', '');
+
+        if (partialName.startsWith('/'))
+          partialName = partialName.substr(1);
 
         viewEngline.registerPartial(
           partialName,
@@ -207,7 +208,7 @@ export class WebService implements ServerServiceInterface {
         console.log(
           chalk.gray(
             `${Moment().format("HH:mm:ss")} ${domain} ${
-              req.url
+            req.url
             } ${req.ip()} ${req.useragent()}`
           )
         );
@@ -307,7 +308,7 @@ export class WebService implements ServerServiceInterface {
             data,
             JSON.parse(fs.readFileSync(siteDataPath).toString())
           );
-        } catch (error) {}
+        } catch (error) { }
       }
 
       if (data.localization && data.localization.default)
@@ -360,7 +361,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(localeDataPath).toString())
             );
-          } catch (error) {}
+          } catch (error) { }
         } else fs.writeFileSync(localeDataPath, "{}");
       }
 
@@ -373,7 +374,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(urlLocaleDataPath).toString())
             );
-          } catch (error) {}
+          } catch (error) { }
         } else fs.writeFileSync(urlLocaleDataPath, "{}");
       }
 
@@ -393,7 +394,7 @@ export class WebService implements ServerServiceInterface {
             model,
             JSON.parse(fs.readFileSync(hbsJsonPath).toString())
           );
-        } catch (error) {}
+        } catch (error) { }
       }
 
       // res.json({ domain, sitePath, url: req.url, filePath, fileExist: fs.existsSync(filePath), hbsPath });
@@ -425,7 +426,7 @@ export class WebService implements ServerServiceInterface {
 
           return;
         }
-        ServerRouter.processRequestToStatic(req, res, () => {}, sitePath);
+        ServerRouter.processRequestToStatic(req, res, () => { }, sitePath);
       }
     } else {
       next();
@@ -446,7 +447,7 @@ export class WebService implements ServerServiceInterface {
     return join(__dirname, "..", "www", "message.hbs");
   }
 
-  constructor() {}
+  constructor() { }
 
-  async start() {}
+  async start() { }
 }

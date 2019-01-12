@@ -99,11 +99,9 @@ class WebService {
         var partialsPath = path_1.join(sitePath, "_partials");
         if (fs.existsSync(partialsPath)) {
             (await WebService.readDirWithGlob(path_1.join(partialsPath, "**/*.hbs"))).forEach(partialFilePath => {
-                var partialName = partialFilePath.replace(partialsPath, "");
-                partialName = partialName
-                    .substr(1)
-                    .replace("/", "-")
-                    .replace(".hbs", "");
+                var partialName = partialFilePath.replace(partialsPath.replace(/\\/g, '/'), '').replace('.hbs', '');
+                if (partialName.startsWith('/'))
+                    partialName = partialName.substr(1);
                 viewEngline.registerPartial(partialName, fs.readFileSync(partialFilePath).toString());
             });
         }
