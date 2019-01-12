@@ -159,12 +159,14 @@ export class WebService implements ServerServiceInterface {
         join(partialsPath, "**/*.hbs")
       )).forEach(partialFilePath => {
 
-
         var partialName = partialFilePath.replace(partialsPath.replace(/\\/g, '/'), '').replace('.hbs', '');
 
         if (partialName.startsWith('/'))
           partialName = partialName.substr(1);
 
+        partialName = partialName.replace(/\//g, '-');
+
+        console.log(partialName);
         viewEngline.registerPartial(
           partialName,
           fs.readFileSync(partialFilePath).toString()
