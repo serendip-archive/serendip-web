@@ -165,8 +165,6 @@ export class WebService implements ServerServiceInterface {
           partialName = partialName.substr(1);
 
         partialName = partialName.replace(/\//g, '-');
-
-        console.log(partialName);
         viewEngline.registerPartial(
           partialName,
           fs.readFileSync(partialFilePath).toString()
