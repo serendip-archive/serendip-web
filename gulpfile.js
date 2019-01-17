@@ -25,8 +25,6 @@ var run = function () {
     server = child.spawn('node', [
         'bin/server.js',
         '--dir=www/localhost',
-        '--tunnel',
-        '--tunnel-subdomain=serendip'
     ],
         { stdio: 'inherit' });
 

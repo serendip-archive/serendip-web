@@ -1,6 +1,6 @@
 {
   "name": "serendip-web",
-  "version": "1.0.22",
+  "version": "1.0.24",
   "description": "It's a lightweight web server for creating websites using handlebars and javascript.",
   "main": "index.js",
   "bin": {
@@ -38,6 +38,7 @@
     "underscore": "^1.9.1"
   },
   "devDependencies": {
+    "@types/fs-extra": "^5.0.4",
     "@types/glob": "^7.1.1",
     "@types/handlebars": "^4.0.40",
     "@types/html-minifier": "^3.5.2",
