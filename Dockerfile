@@ -7,4 +7,4 @@ USER node
 ENV multi=true
 ENV demo=false
 ENV dir=www/
-CMD [ "node", "bin/server.js", "--dir=${dir}" , "--multi=${multi}" , "--demo=${demo}" ]
+CMD node bin/server.js --dir=${dir} --multi=${multi} --demo=${demo}
