@@ -4,6 +4,6 @@ COPY . .
 RUN npm install
 ENV multi=true
 ENV demo=false
-EXPOSE 80
+EXPOSE 2080
 USER node
-CMD [ "node", "bin/server.js", " -p 80 -d www/ -m ${multi} --demo ${demo}" ]
+CMD [ "node", "bin/server.js", " -d www/ -m ${multi} --demo ${demo}" ]
