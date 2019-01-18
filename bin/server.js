@@ -105,7 +105,7 @@ console.log(
   )
 );
 
-if (args.multi) {
+if (args.multi && args.multi != 'false') {
   WebService.WebService.configure({
     sitesPath: args.dir || process.cwd()
   });
@@ -117,13 +117,13 @@ if (args.multi) {
 
 var demoPath = path.join(__dirname, "..", "www", "localhost");
 
-if (args.demo) {
+if (args.demo && args.demo != 'false') {
   WebService.WebService.configure({
     sitePath: demoPath
   });
 }
 
-if (args.example) {
+if (args.example && args.example != 'false') {
   var examplePath = path.join(
     process.cwd(),
     args.example.toString() != "true" ? args.example : "example"
