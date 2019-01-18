@@ -6,5 +6,5 @@ EXPOSE 2080
 USER node
 ENV multi=true
 ENV demo=false
-ENV dir=www/
+ENV dir=/websites
 CMD node bin/server.js --dir=${dir} --multi=${multi} --demo=${demo}

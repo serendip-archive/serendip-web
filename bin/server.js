@@ -19,9 +19,9 @@ figlet.parseFont(
 );
 
 var localtunnel = require("localtunnel");
-console.log('\n');
+console.log("\n");
 console.log(chalk.yellow(figlet.textSync("S", { font: "isometric2" })));
-console.log('\n');
+console.log("\n");
 
 var args = argv
   .option([
@@ -105,7 +105,7 @@ console.log(
   )
 );
 
-if (args.multi && args.multi != 'false') {
+if (args.multi && args.multi != "false") {
   WebService.WebService.configure({
     sitesPath: args.dir || process.cwd()
   });
@@ -117,18 +117,19 @@ if (args.multi && args.multi != 'false') {
 
 var demoPath = path.join(__dirname, "..", "www", "localhost");
 
-if (args.demo && args.demo != 'false') {
+if (args.demo && args.demo != "false") {
   WebService.WebService.configure({
     sitePath: demoPath
   });
 }
 
-if (args.example && args.example != 'false') {
+if (args.example && args.example != "false") {
   var examplePath = path.join(
     process.cwd(),
     args.example.toString() != "true" ? args.example : "example"
   );
 
+  fs.emptyDirSync(examplePath);
   fs.copySync(demoPath, examplePath);
 
   WebService.WebService.configure({
