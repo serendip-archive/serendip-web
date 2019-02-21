@@ -80,7 +80,7 @@ gulp.task('ts', function () {
         .pipe(ts({
             noImplicitAny: false,
             target: 'es2017',
-            sourceMap: true,
+            sourceMap: false,
             module: 'CommonJS',
             baseUrl: ".",
             paths: {

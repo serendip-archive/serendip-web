@@ -15,24 +15,6 @@ class StatusController {
                 }
             ]
         };
-        this.routes = {
-            method: "get",
-            publicAccess: true,
-            actions: [
-                (req, res, next, done) => {
-                    setTimeout(() => {
-                        next();
-                    }, 200);
-                },
-                (req, res, next, done) => {
-                    var model = _.map(serendip_1.Server.routes, route => {
-                        route = _.omit(route, "controllerObject");
-                        return route;
-                    });
-                    res.json(model);
-                }
-            ]
-        };
         this.services = {
             method: "get",
             publicAccess: true,

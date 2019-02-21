@@ -1,10 +1,10 @@
-import { ServerEndpointInterface, Server } from "serendip";
+import { HttpEndpointInterface, Server } from "serendip";
 import * as _ from "underscore";
 
 export class StatusController {
   constructor() {}
 
-  clusterTesting: ServerEndpointInterface = {
+  clusterTesting: HttpEndpointInterface = {
     publicAccess: true,
     route: "/api/server/cluster-testing",
     method: "get",
@@ -16,27 +16,7 @@ export class StatusController {
     ]
   };
 
-  routes: ServerEndpointInterface = {
-    method: "get",
-    publicAccess: true,
-    actions: [
-      (req, res, next, done) => {
-        setTimeout(() => {
-          next();
-        }, 200);
-      },
-      (req, res, next, done) => {
-        var model = _.map(Server.routes, route => {
-          route = _.omit(route, "controllerObject");
-
-          return route;
-        });
-        res.json(model);
-      }
-    ]
-  };
-
-  services: ServerEndpointInterface = {
+  services: HttpEndpointInterface = {
     method: "get",
     publicAccess: true,
     actions: [

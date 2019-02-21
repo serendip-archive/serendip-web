@@ -1,19 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const serendip_1 = require("serendip");
-const path_1 = require("path");
-const fs = require("fs");
-const handlebars = require("handlebars");
-const _ = require("underscore");
-const Request = require("request");
-const Moment = require("moment");
-const sUtils = require("serendip-utility");
 const chalk_1 = require("chalk");
-const htmlMinifier = require("html-minifier");
-const locales_1 = require("./locales");
+const fs = require("fs");
 const glob = require("glob");
+const handlebars = require("handlebars");
+const htmlMinifier = require("html-minifier");
+const Moment = require("moment");
+const path_1 = require("path");
+const Request = require("request");
+const serendip_1 = require("serendip");
+const sUtils = require("serendip-utility");
+const _ = require("underscore");
+const SBC = require("serendip-business-client");
+const locales_1 = require("./locales");
 class WebService {
-    constructor() { }
+    constructor(httpService) {
+        this.httpService = httpService;
+    }
     static configure(opts) {
         WebService.options = _.extend(WebService.options, opts || {});
     }
@@ -24,10 +27,10 @@ class WebService {
      * @param req server request
      * @param res server response
      */
-    static executeHbsJs(script, sitePath, req, res) {
+    static async executeHbsJs(script, sitePath, req, res) {
         var hbsJsError, hbsJsFunc, hbsJsScript = script;
         try {
-            hbsJsFunc = (function () {
+            hbsJsFunc = await (async function () {
                 // evaluated script will have access to Server and Modules
                 const Server = {
                     request: req,
@@ -38,7 +41,8 @@ class WebService {
                     request: Request,
                     moment: Moment,
                     handlebars: handlebars,
-                    utils: sUtils
+                    utils: sUtils,
+                    SBC
                 };
                 // overwrite to block access to global process
                 const process = null;
@@ -99,10 +103,12 @@ class WebService {
         var partialsPath = path_1.join(sitePath, "_partials");
         if (fs.existsSync(partialsPath)) {
             (await WebService.readDirWithGlob(path_1.join(partialsPath, "**/*.hbs"))).forEach(partialFilePath => {
-                var partialName = partialFilePath.replace(partialsPath.replace(/\\/g, '/'), '').replace('.hbs', '');
-                if (partialName.startsWith('/'))
+                var partialName = partialFilePath
+                    .replace(partialsPath.replace(/\\/g, "/"), "")
+                    .replace(".hbs", "");
+                if (partialName.startsWith("/"))
                     partialName = partialName.substr(1);
-                partialName = partialName.replace(/\//g, '-');
+                partialName = partialName.replace(/\//g, "-");
                 viewEngline.registerPartial(partialName, fs.readFileSync(partialFilePath).toString());
             });
         }
@@ -278,7 +284,7 @@ class WebService {
                     }, WebService.getMessagePagePath(), sitePath, req, res);
                     return;
                 }
-                serendip_1.ServerRouter.processRequestToStatic(req, res, () => { }, sitePath);
+                serendip_1.HttpService.processRequestToStatic(req, res, () => { }, sitePath);
             }
         }
         else {
@@ -297,10 +303,12 @@ class WebService {
                 return path_1.join(WebService.options.sitePath, "message.hbs");
         return path_1.join(__dirname, "..", "www", "message.hbs");
     }
-    async start() { }
+    async start() {
+        if (WebService.options.sitePath) {
+        }
+    }
 }
 WebService.options = {
     sitesPath: path_1.join(__dirname, "..", "www")
 };
-WebService.dependencies = [];
 exports.WebService = WebService;

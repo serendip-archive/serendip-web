@@ -1,38 +1,35 @@
-import {
-  ServerRouter,
-  ServerServiceInterface,
-  EmailService,
-  Server,
-  EmailModel,
-  SmsIrService,
-  ServerRequestInterface,
-  ServerResponseInterface
-} from "serendip";
-import { join, basename, dirname } from "path";
-import * as fs from "fs";
-import * as handlebars from "handlebars";
-import * as _ from "underscore";
-import * as Request from "request";
-import * as Moment from "moment";
-import * as sUtils from "serendip-utility";
 import chalk from "chalk";
-
-import * as htmlMinifier from "html-minifier";
-import { locales } from "./locales";
+import * as fs from "fs";
 import * as glob from "glob";
+import * as handlebars from "handlebars";
+import * as htmlMinifier from "html-minifier";
+import * as Moment from "moment";
+import { join } from "path";
+import * as Request from "request";
+import {
+  HttpRequestInterface,
+  HttpResponseInterface,
+  HttpRouter,
+  HttpService,
+  Server
+} from "serendip";
+import * as sUtils from "serendip-utility";
+import * as _ from "underscore";
+import * as SBC from "serendip-business-client";
+import { locales } from "./locales";
+import { ServerServiceInterface } from "serendip-business-model";
 
 export class WebService implements ServerServiceInterface {
   static options: {
     sitesPath?: string;
     sitePath?: string;
   } = {
-      sitesPath: join(__dirname, "..", "www")
-    };
+    sitesPath: join(__dirname, "..", "www")
+  };
 
   static configure(opts?: typeof WebService.options) {
     WebService.options = _.extend(WebService.options, opts || {});
   }
-  static dependencies = [];
 
   /**
    *
@@ -41,18 +38,18 @@ export class WebService implements ServerServiceInterface {
    * @param req server request
    * @param res server response
    */
-  static executeHbsJs(
+  static async executeHbsJs(
     script: string,
     sitePath,
     req,
     res
-  ): { model: any; handlebars?: typeof handlebars } {
+  ): Promise<{ model: any; handlebars?: typeof handlebars }> {
     var hbsJsError,
       hbsJsFunc: Function,
       hbsJsScript = script;
 
     try {
-      hbsJsFunc = (function () {
+      hbsJsFunc = await (async function() {
         // evaluated script will have access to Server and Modules
         const Server = {
           request: req,
@@ -64,7 +61,8 @@ export class WebService implements ServerServiceInterface {
           request: Request,
           moment: Moment,
           handlebars: handlebars,
-          utils: sUtils
+          utils: sUtils,
+          SBC
         };
 
         // overwrite to block access to global process
@@ -95,7 +93,7 @@ export class WebService implements ServerServiceInterface {
     if (typeof hbsJsFunc === "function") {
       var hbsJsFuncResult;
       try {
-        hbsJsFuncResult = (async function () {
+        hbsJsFuncResult = (async function() {
           return await hbsJsFunc();
         })();
       } catch (e) {
@@ -124,7 +122,7 @@ export class WebService implements ServerServiceInterface {
     hbsPath,
     sitePath,
     req,
-    res: ServerResponseInterface
+    res: HttpResponseInterface
   ) {
     var render,
       viewEngline = handlebars.noConflict(),
@@ -158,13 +156,13 @@ export class WebService implements ServerServiceInterface {
       (await WebService.readDirWithGlob(
         join(partialsPath, "**/*.hbs")
       )).forEach(partialFilePath => {
+        var partialName = partialFilePath
+          .replace(partialsPath.replace(/\\/g, "/"), "")
+          .replace(".hbs", "");
 
-        var partialName = partialFilePath.replace(partialsPath.replace(/\\/g, '/'), '').replace('.hbs', '');
+        if (partialName.startsWith("/")) partialName = partialName.substr(1);
 
-        if (partialName.startsWith('/'))
-          partialName = partialName.substr(1);
-
-        partialName = partialName.replace(/\//g, '-');
+        partialName = partialName.replace(/\//g, "-");
         viewEngline.registerPartial(
           partialName,
           fs.readFileSync(partialFilePath).toString()
@@ -194,8 +192,8 @@ export class WebService implements ServerServiceInterface {
     );
   }
   static async processRequest(
-    req: ServerRequestInterface,
-    res: ServerResponseInterface,
+    req: HttpRequestInterface,
+    res: HttpResponseInterface,
     next,
     done
   ) {
@@ -208,7 +206,7 @@ export class WebService implements ServerServiceInterface {
         console.log(
           chalk.gray(
             `${Moment().format("HH:mm:ss")} ${domain} ${
-            req.url
+              req.url
             } ${req.ip()} ${req.useragent()}`
           )
         );
@@ -308,7 +306,7 @@ export class WebService implements ServerServiceInterface {
             data,
             JSON.parse(fs.readFileSync(siteDataPath).toString())
           );
-        } catch (error) { }
+        } catch (error) {}
       }
 
       if (data.localization && data.localization.default)
@@ -361,7 +359,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(localeDataPath).toString())
             );
-          } catch (error) { }
+          } catch (error) {}
         } else fs.writeFileSync(localeDataPath, "{}");
       }
 
@@ -374,7 +372,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(urlLocaleDataPath).toString())
             );
-          } catch (error) { }
+          } catch (error) {}
         } else fs.writeFileSync(urlLocaleDataPath, "{}");
       }
 
@@ -394,7 +392,7 @@ export class WebService implements ServerServiceInterface {
             model,
             JSON.parse(fs.readFileSync(hbsJsonPath).toString())
           );
-        } catch (error) { }
+        } catch (error) {}
       }
 
       // res.json({ domain, sitePath, url: req.url, filePath, fileExist: fs.existsSync(filePath), hbsPath });
@@ -426,7 +424,7 @@ export class WebService implements ServerServiceInterface {
 
           return;
         }
-        ServerRouter.processRequestToStatic(req, res, () => { }, sitePath);
+        HttpService.processRequestToStatic(req, res, () => {}, sitePath);
       }
     } else {
       next();
@@ -446,8 +444,10 @@ export class WebService implements ServerServiceInterface {
 
     return join(__dirname, "..", "www", "message.hbs");
   }
+  constructor(private httpService: HttpService) {}
 
-  constructor() { }
-
-  async start() { }
+  async start() {
+    if (WebService.options.sitePath) {
+    }
+  }
 }

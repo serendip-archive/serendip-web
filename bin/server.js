@@ -4,6 +4,7 @@ var serendip = require("serendip");
 var process = require("process");
 var StatusController = require("../dist/StatusController");
 var WebService = require("../dist/WebService");
+
 var _ = require("underscore");
 
 const chalk = require("chalk");
@@ -137,15 +138,18 @@ if (args.example && args.example != "false") {
   });
 }
 
+serendip.HttpService.configure({
+  cors: "*",
+  controllers: [StatusController.StatusController],
+  httpPort: args.port || 2080,
+  beforeMiddlewares: [WebService.WebService.processRequest]
+});
+
 serendip
   .start({
-    cors: "*",
     logging: "info",
-    httpPort: args.port || 2080,
     cpuCores: 1,
-    controllers: [StatusController.StatusController],
-    services: [WebService.WebService],
-    beforeMiddlewares: [WebService.WebService.processRequest]
+    services: [WebService.WebService, serendip.HttpService]
   })
   .then(() => {
     if (args.tunnel) {
