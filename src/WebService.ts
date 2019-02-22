@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import * as fs from "fs";
+import * as fs from "fs-extra";
 import * as glob from "glob";
 import * as handlebars from "handlebars";
 import * as htmlMinifier from "html-minifier";
@@ -26,11 +26,35 @@ export class WebService implements ServerServiceInterface {
   } = {
     sitesPath: join(__dirname, "..", "www")
   };
+  static servers = {};
 
+  static helperModules() {
+    return _.clone({
+      _,
+      request: Request,
+      moment: Moment,
+      handlebars: handlebars,
+      utils: sUtils,
+      SBC
+    });
+  }
   static configure(opts?: typeof WebService.options) {
     WebService.options = _.extend(WebService.options, opts || {});
   }
 
+  static handleError(error, sitePath, req, res) {
+    if (typeof error != "undefined" && error) {
+      res.statusCode = 500;
+
+      WebService.renderHbs(
+        { error: _.extend(error, { code: 500 }) },
+        WebService.getMessagePagePath(),
+        sitePath,
+        req,
+        res
+      );
+    }
+  }
   /**
    *
    * @param script string to eval
@@ -43,27 +67,22 @@ export class WebService implements ServerServiceInterface {
     sitePath,
     req,
     res
-  ): Promise<{ model: any; handlebars?: typeof handlebars }> {
-    var hbsJsError,
-      hbsJsFunc: Function,
+  ): Promise<{ model: any; handlebars?: typeof handlebars } | void> {
+    let hbsJsFunc: Function,
       hbsJsScript = script;
 
     try {
       hbsJsFunc = await (async function() {
         // evaluated script will have access to Server and Modules
-        const Server = {
-          request: req,
-          response: res
-        };
 
-        const Modules = {
-          _,
-          request: Request,
-          moment: Moment,
-          handlebars: handlebars,
-          utils: sUtils,
-          SBC
-        };
+        let modules;
+        if (WebService.servers[sitePath]) {
+          const jsServer = WebService.servers[sitePath];
+
+          if (jsServer.modules) modules = jsServer.modules;
+        }
+
+        if (!modules) modules = WebService.helperModules();
 
         // overwrite to block access to global process
         const process = null;
@@ -71,24 +90,8 @@ export class WebService implements ServerServiceInterface {
         return eval(hbsJsScript);
       })();
     } catch (e) {
-      hbsJsError = e;
+      return WebService.handleError(e, sitePath, req, res);
     }
-
-    var handleError = () => {
-      if (typeof hbsJsError != "undefined" && hbsJsError) {
-        res.statusCode = 500;
-
-        WebService.renderHbs(
-          { error: { message: hbsJsError, code: 500 } },
-          WebService.getMessagePagePath(),
-          sitePath,
-          req,
-          res
-        );
-      }
-    };
-
-    handleError();
 
     if (typeof hbsJsFunc === "function") {
       var hbsJsFuncResult;
@@ -97,10 +100,8 @@ export class WebService implements ServerServiceInterface {
           return await hbsJsFunc();
         })();
       } catch (e) {
-        hbsJsError = e;
+        return WebService.handleError(e, sitePath, req, res);
       }
-
-      handleError();
 
       if (hbsJsFuncResult) {
         return hbsJsFuncResult;
@@ -138,16 +139,26 @@ export class WebService implements ServerServiceInterface {
     var hbsJsPath = hbsPath + ".js";
 
     if (fs.existsSync(hbsJsPath)) {
-      var hbsJsResult = await WebService.executeHbsJs(
-        fs.readFileSync(hbsJsPath).toString(),
-        sitePath,
-        req,
-        res
-      );
+      let hbsJsResult;
+
+      try {
+        hbsJsResult = await WebService.executeHbsJs(
+          fs.readFileSync(hbsJsPath).toString(),
+          sitePath,
+          req,
+          res
+        );
+      } catch (error) {
+        if (error && typeof error == "object") {
+          error.when = "executing hbs js file";
+          error.path = hbsJsPath;
+        }
+        return WebService.handleError(error, sitePath, req, res);
+      }
 
       if (res.finished) return;
 
-      if (hbsJsResult.model) {
+      if (hbsJsResult && hbsJsResult.model) {
         inputObjects.model = _.extend(inputObjects.model, hbsJsResult.model);
       }
     }
@@ -173,12 +184,13 @@ export class WebService implements ServerServiceInterface {
     try {
       render = hbsTemplate(inputObjects);
     } catch (error) {
-      render = error.message || error;
+      return res.json(error);
+      // render = error.message || error;
     }
 
     if (!res.headersSent) res.setHeader("content-type", "text/html");
 
-    res.send(
+    res.write(
       htmlMinifier.minify(render, {
         collapseWhitespace: true,
         minifyCSS: true,
@@ -190,6 +202,8 @@ export class WebService implements ServerServiceInterface {
         useShortDoctype: true
       })
     );
+
+    if (!res.finished) res.end();
   }
   static async processRequest(
     req: HttpRequestInterface,
@@ -198,7 +212,7 @@ export class WebService implements ServerServiceInterface {
     done
   ) {
     if (req.url.indexOf("/api") !== 0) {
-      var sitePath: string,
+      let sitePath: string,
         locale: string,
         domain = req.headers.host.split(":")[0].replace("www.", "");
 
@@ -231,11 +245,21 @@ export class WebService implements ServerServiceInterface {
         }
       } else {
         sitePath = WebService.options.sitePath;
+      }
 
-        if (sitePath)
-          if (sitePath.indexOf(".") === 0) {
-            sitePath = join(process.cwd(), sitePath);
+      if (WebService.servers[sitePath]) {
+        const jsServer = WebService.servers[sitePath];
+
+        if (jsServer.error) {
+          if (typeof jsServer.error == "object") {
+            jsServer.error.when = jsServer.when;
+            jsServer.error.path = jsServer.path;
+          } else {
+            jsServer.error = { message: jsServer.error };
           }
+
+          return WebService.handleError(jsServer.error, sitePath, req, res);
+        }
       }
 
       if (!fs.existsSync(sitePath)) {
@@ -262,7 +286,7 @@ export class WebService implements ServerServiceInterface {
         return;
       }
 
-      if (req.url.indexOf(".hbs") != -1) {
+      if (req.url.indexOf(".hbs") != -1 || req.url === "/server.js") {
         WebService.renderHbs(
           {
             error: {
@@ -444,10 +468,65 @@ export class WebService implements ServerServiceInterface {
 
     return join(__dirname, "..", "www", "message.hbs");
   }
-  constructor(private httpService: HttpService) {}
+  constructor(private httpService: HttpService) {
+    if (
+      WebService.options.sitePath &&
+      WebService.options.sitePath.indexOf(".") === 0
+    ) {
+      WebService.options.sitePath = join(
+        process.cwd(),
+        WebService.options.sitePath
+      );
+    }
+  }
 
   async start() {
     if (WebService.options.sitePath) {
+      const serverFilePath = join(WebService.options.sitePath, "server.js");
+      if (await fs.pathExists(serverFilePath)) {
+        let serverClass = null;
+
+        let serverError = null;
+
+        try {
+          serverClass = eval((await fs.readFile(serverFilePath)).toString())();
+        } catch (error) {
+          serverError = {
+            error: error,
+            when: "evaluating jsServer file",
+            path: serverFilePath
+          };
+        }
+
+        if (serverClass) {
+          let serverObj = null;
+          try {
+            serverObj = new serverClass(WebService.helperModules());
+
+            if (serverObj.start) {
+              try {
+                await serverObj.start();
+              } catch (error) {
+                serverError = {
+                  error: error,
+                  when: "starting jsServer",
+                  path: serverFilePath
+                };
+              }
+            }
+            WebService.servers[WebService.options.sitePath] = serverObj;
+          } catch (error) {
+            serverError = {
+              error: error,
+              when: "creating object from server class jsServer",
+              path: serverFilePath
+            };
+          }
+        }
+
+        if (serverError)
+          WebService.servers[WebService.options.sitePath] = serverError;
+      }
     }
   }
 }

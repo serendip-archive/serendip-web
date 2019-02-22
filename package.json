@@ -1,6 +1,6 @@
 {
   "name": "serendip-web",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "It's a lightweight web server for creating websites using handlebars and javascript.",
   "main": "index.js",
   "bin": {
@@ -33,8 +33,8 @@
     "moment": "^2.23.0",
     "moment-jalaali": "^0.8.3",
     "request": "^2.88.0",
-    "serendip": "^1.1.8",
-    "serendip-business-client": "^1.0.2",
+    "serendip": "^1.1.9",
+    "serendip-business-client": "^1.0.3",
     "serendip-utility": "^1.1.0",
     "underscore": "^1.9.1"
   },

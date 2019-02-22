@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const chalk_1 = require("chalk");
-const fs = require("fs");
+const fs = require("fs-extra");
 const glob = require("glob");
 const handlebars = require("handlebars");
 const htmlMinifier = require("html-minifier");
@@ -16,9 +16,29 @@ const locales_1 = require("./locales");
 class WebService {
     constructor(httpService) {
         this.httpService = httpService;
+        if (WebService.options.sitePath &&
+            WebService.options.sitePath.indexOf(".") === 0) {
+            WebService.options.sitePath = path_1.join(process.cwd(), WebService.options.sitePath);
+        }
+    }
+    static helperModules() {
+        return _.clone({
+            _,
+            request: Request,
+            moment: Moment,
+            handlebars: handlebars,
+            utils: sUtils,
+            SBC
+        });
     }
     static configure(opts) {
         WebService.options = _.extend(WebService.options, opts || {});
+    }
+    static handleError(error, sitePath, req, res) {
+        if (typeof error != "undefined" && error) {
+            res.statusCode = 500;
+            WebService.renderHbs({ error: _.extend(error, { code: 500 }) }, WebService.getMessagePagePath(), sitePath, req, res);
+        }
     }
     /**
      *
@@ -28,37 +48,26 @@ class WebService {
      * @param res server response
      */
     static async executeHbsJs(script, sitePath, req, res) {
-        var hbsJsError, hbsJsFunc, hbsJsScript = script;
+        let hbsJsFunc, hbsJsScript = script;
         try {
             hbsJsFunc = await (async function () {
                 // evaluated script will have access to Server and Modules
-                const Server = {
-                    request: req,
-                    response: res
-                };
-                const Modules = {
-                    _,
-                    request: Request,
-                    moment: Moment,
-                    handlebars: handlebars,
-                    utils: sUtils,
-                    SBC
-                };
+                let modules;
+                if (WebService.servers[sitePath]) {
+                    const jsServer = WebService.servers[sitePath];
+                    if (jsServer.modules)
+                        modules = jsServer.modules;
+                }
+                if (!modules)
+                    modules = WebService.helperModules();
                 // overwrite to block access to global process
                 const process = null;
                 return eval(hbsJsScript);
             })();
         }
         catch (e) {
-            hbsJsError = e;
+            return WebService.handleError(e, sitePath, req, res);
         }
-        var handleError = () => {
-            if (typeof hbsJsError != "undefined" && hbsJsError) {
-                res.statusCode = 500;
-                WebService.renderHbs({ error: { message: hbsJsError, code: 500 } }, WebService.getMessagePagePath(), sitePath, req, res);
-            }
-        };
-        handleError();
         if (typeof hbsJsFunc === "function") {
             var hbsJsFuncResult;
             try {
@@ -67,9 +76,8 @@ class WebService {
                 })();
             }
             catch (e) {
-                hbsJsError = e;
+                return WebService.handleError(e, sitePath, req, res);
             }
-            handleError();
             if (hbsJsFuncResult) {
                 return hbsJsFuncResult;
             }
@@ -93,10 +101,20 @@ class WebService {
         viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
         var hbsJsPath = hbsPath + ".js";
         if (fs.existsSync(hbsJsPath)) {
-            var hbsJsResult = await WebService.executeHbsJs(fs.readFileSync(hbsJsPath).toString(), sitePath, req, res);
+            let hbsJsResult;
+            try {
+                hbsJsResult = await WebService.executeHbsJs(fs.readFileSync(hbsJsPath).toString(), sitePath, req, res);
+            }
+            catch (error) {
+                if (error && typeof error == "object") {
+                    error.when = "executing hbs js file";
+                    error.path = hbsJsPath;
+                }
+                return WebService.handleError(error, sitePath, req, res);
+            }
             if (res.finished)
                 return;
-            if (hbsJsResult.model) {
+            if (hbsJsResult && hbsJsResult.model) {
                 inputObjects.model = _.extend(inputObjects.model, hbsJsResult.model);
             }
         }
@@ -116,11 +134,12 @@ class WebService {
             render = hbsTemplate(inputObjects);
         }
         catch (error) {
-            render = error.message || error;
+            return res.json(error);
+            // render = error.message || error;
         }
         if (!res.headersSent)
             res.setHeader("content-type", "text/html");
-        res.send(htmlMinifier.minify(render, {
+        res.write(htmlMinifier.minify(render, {
             collapseWhitespace: true,
             minifyCSS: true,
             minifyJS: true,
@@ -130,10 +149,12 @@ class WebService {
             sortClassName: true,
             useShortDoctype: true
         }));
+        if (!res.finished)
+            res.end();
     }
     static async processRequest(req, res, next, done) {
         if (req.url.indexOf("/api") !== 0) {
-            var sitePath, locale, domain = req.headers.host.split(":")[0].replace("www.", "");
+            let sitePath, locale, domain = req.headers.host.split(":")[0].replace("www.", "");
             if (serendip_1.Server.opts.logging == "info") {
                 console.log(chalk_1.default.gray(`${Moment().format("HH:mm:ss")} ${domain} ${req.url} ${req.ip()} ${req.useragent()}`));
             }
@@ -151,10 +172,19 @@ class WebService {
             }
             else {
                 sitePath = WebService.options.sitePath;
-                if (sitePath)
-                    if (sitePath.indexOf(".") === 0) {
-                        sitePath = path_1.join(process.cwd(), sitePath);
+            }
+            if (WebService.servers[sitePath]) {
+                const jsServer = WebService.servers[sitePath];
+                if (jsServer.error) {
+                    if (typeof jsServer.error == "object") {
+                        jsServer.error.when = jsServer.when;
+                        jsServer.error.path = jsServer.path;
                     }
+                    else {
+                        jsServer.error = { message: jsServer.error };
+                    }
+                    return WebService.handleError(jsServer.error, sitePath, req, res);
+                }
             }
             if (!fs.existsSync(sitePath)) {
                 WebService.renderHbs({
@@ -172,7 +202,7 @@ class WebService {
                 }, WebService.getMessagePagePath(), sitePath, req, res);
                 return;
             }
-            if (req.url.indexOf(".hbs") != -1) {
+            if (req.url.indexOf(".hbs") != -1 || req.url === "/server.js") {
                 WebService.renderHbs({
                     error: {
                         code: "403",
@@ -305,10 +335,54 @@ class WebService {
     }
     async start() {
         if (WebService.options.sitePath) {
+            const serverFilePath = path_1.join(WebService.options.sitePath, "server.js");
+            if (await fs.pathExists(serverFilePath)) {
+                let serverClass = null;
+                let serverError = null;
+                try {
+                    serverClass = eval((await fs.readFile(serverFilePath)).toString())();
+                }
+                catch (error) {
+                    serverError = {
+                        error: error,
+                        when: "evaluating jsServer file",
+                        path: serverFilePath
+                    };
+                }
+                if (serverClass) {
+                    let serverObj = null;
+                    try {
+                        serverObj = new serverClass(WebService.helperModules());
+                        if (serverObj.start) {
+                            try {
+                                await serverObj.start();
+                            }
+                            catch (error) {
+                                serverError = {
+                                    error: error,
+                                    when: "starting jsServer",
+                                    path: serverFilePath
+                                };
+                            }
+                        }
+                        WebService.servers[WebService.options.sitePath] = serverObj;
+                    }
+                    catch (error) {
+                        serverError = {
+                            error: error,
+                            when: "creating object from server class jsServer",
+                            path: serverFilePath
+                        };
+                    }
+                }
+                if (serverError)
+                    WebService.servers[WebService.options.sitePath] = serverError;
+            }
         }
     }
 }
 WebService.options = {
     sitesPath: path_1.join(__dirname, "..", "www")
 };
+WebService.servers = {};
 exports.WebService = WebService;

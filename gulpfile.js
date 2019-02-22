@@ -24,7 +24,7 @@ var run = function () {
 
     server = child.spawn('node', [
         'bin/server.js',
-        '--dir=www/localhost',
+        '--dir=./www/localhost',
     ],
         { stdio: 'inherit' });
 
@@ -97,6 +97,7 @@ gulp.task('ts', function () {
 // whats typescripts , compile and then run
 gulp.watch(paths.tsSources, ['run']);
 gulp.watch('bin/**.js', run);
+gulp.watch('**/server.js', run);
 
 
 
