@@ -1,7 +1,5 @@
 /// <reference path="serendip.d.ts" />
 async () => {
- 
-
   return {
     model: {
       title: "Serendip web server",

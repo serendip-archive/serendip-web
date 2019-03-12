@@ -12,7 +12,10 @@ const clear = require("clear");
 const figlet = require("figlet");
 var argv = require("argv");
 var path = require("path");
+var dotenv = require("dotenv");
 var fs = require("fs-extra");
+
+dotenv.config();
 
 figlet.parseFont(
   "isometric2",

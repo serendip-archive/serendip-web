@@ -12,6 +12,7 @@ const serendip_1 = require("serendip");
 const sUtils = require("serendip-utility");
 const _ = require("underscore");
 const SBC = require("serendip-business-client");
+const SMP = require("serendip-mongodb-provider");
 const locales_1 = require("./locales");
 class WebService {
     constructor(httpService) {
@@ -28,6 +29,7 @@ class WebService {
             moment: Moment,
             handlebars: handlebars,
             utils: sUtils,
+            SMP,
             SBC
         });
     }
@@ -335,6 +337,7 @@ class WebService {
     }
     async start() {
         if (WebService.options.sitePath) {
+            console.log("\n\t founded server.js. going to start it ...");
             const serverFilePath = path_1.join(WebService.options.sitePath, "server.js");
             if (await fs.pathExists(serverFilePath)) {
                 let serverClass = null;
@@ -366,6 +369,7 @@ class WebService {
                             }
                         }
                         WebService.servers[WebService.options.sitePath] = serverObj;
+                        console.log("\n\tserver.js started.");
                     }
                     catch (error) {
                         serverError = {
@@ -373,6 +377,7 @@ class WebService {
                             when: "creating object from server class jsServer",
                             path: serverFilePath
                         };
+                        console.log("\n\tserver.js error", serverError);
                     }
                 }
                 if (serverError)

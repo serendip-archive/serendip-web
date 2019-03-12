@@ -6,6 +6,8 @@ import * as htmlMinifier from "html-minifier";
 import * as Moment from "moment";
 import { join } from "path";
 import * as Request from "request";
+import * as dotenv from "dotenv";
+
 import {
   HttpRequestInterface,
   HttpResponseInterface,
@@ -16,6 +18,7 @@ import {
 import * as sUtils from "serendip-utility";
 import * as _ from "underscore";
 import * as SBC from "serendip-business-client";
+import * as SMP from "serendip-mongodb-provider";
 import { locales } from "./locales";
 import { ServerServiceInterface } from "serendip-business-model";
 
@@ -35,6 +38,7 @@ export class WebService implements ServerServiceInterface {
       moment: Moment,
       handlebars: handlebars,
       utils: sUtils,
+      SMP,
       SBC
     });
   }
@@ -482,6 +486,7 @@ export class WebService implements ServerServiceInterface {
 
   async start() {
     if (WebService.options.sitePath) {
+      console.log("\n\t founded server.js. going to start it ...");
       const serverFilePath = join(WebService.options.sitePath, "server.js");
       if (await fs.pathExists(serverFilePath)) {
         let serverClass = null;
@@ -515,12 +520,16 @@ export class WebService implements ServerServiceInterface {
               }
             }
             WebService.servers[WebService.options.sitePath] = serverObj;
+
+            console.log("\n\tserver.js started.");
           } catch (error) {
             serverError = {
               error: error,
               when: "creating object from server class jsServer",
               path: serverFilePath
             };
+
+            console.log("\n\tserver.js error", serverError);
           }
         }
 
