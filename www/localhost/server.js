@@ -11,7 +11,7 @@
           .replace(/>/g, "&gt;");
         var result = json.replace(
           /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-          function(match) {
+          function (match) {
             var cls = "number";
             if (/^"/.test(match)) {
               if (/:$/.test(match)) {
@@ -60,5 +60,13 @@
           console.log(error);
         }
     }
+
+    async onRequest(req, res , inputs,sitePath) {
+      
+    }
+
+
   };
+
+
 };

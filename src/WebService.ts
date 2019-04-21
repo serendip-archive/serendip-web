@@ -19,6 +19,7 @@ import * as sUtils from "serendip-utility";
 import * as _ from "underscore";
 import * as SBC from "serendip-business-client";
 import * as SMP from "serendip-mongodb-provider";
+import * as SF from "serendip";
 import { locales } from "./locales";
 import { ServerServiceInterface } from "serendip-business-model";
 
@@ -27,8 +28,8 @@ export class WebService implements ServerServiceInterface {
     sitesPath?: string;
     sitePath?: string;
   } = {
-    sitesPath: join(__dirname, "..", "www")
-  };
+      sitesPath: join(__dirname, "..", "www")
+    };
   static servers = {};
 
   static helperModules() {
@@ -39,7 +40,8 @@ export class WebService implements ServerServiceInterface {
       handlebars: handlebars,
       utils: sUtils,
       SMP,
-      SBC
+      SBC,
+      SF
     });
   }
   static configure(opts?: typeof WebService.options) {
@@ -68,15 +70,16 @@ export class WebService implements ServerServiceInterface {
    */
   static async executeHbsJs(
     script: string,
+    inputObjects: { locale?: any; model?: any; data?: any; error?: any },
     sitePath,
     req,
     res
-  ): Promise<{ model: any; handlebars?: typeof handlebars } | void> {
+  ): Promise<{ data: any; model: any; handlebars?: typeof handlebars } | void> {
     let hbsJsFunc: Function,
       hbsJsScript = script;
 
     try {
-      hbsJsFunc = await (async function() {
+      hbsJsFunc = await (async function () {
         // evaluated script will have access to Server and Modules
 
         let modules;
@@ -89,7 +92,9 @@ export class WebService implements ServerServiceInterface {
         if (!modules) modules = WebService.helperModules();
 
         // overwrite to block access to global process
+
         const process = null;
+
 
         return eval(hbsJsScript);
       })();
@@ -100,8 +105,8 @@ export class WebService implements ServerServiceInterface {
     if (typeof hbsJsFunc === "function") {
       var hbsJsFuncResult;
       try {
-        hbsJsFuncResult = (async function() {
-          return await hbsJsFunc();
+        hbsJsFuncResult = (async function () {
+          return await hbsJsFunc(inputObjects.data, inputObjects.model);
         })();
       } catch (e) {
         return WebService.handleError(e, sitePath, req, res);
@@ -110,10 +115,10 @@ export class WebService implements ServerServiceInterface {
       if (hbsJsFuncResult) {
         return hbsJsFuncResult;
       } else {
-        return { model: {} };
+        return { model: {}, data: {} };
       }
     } else {
-      return { model: {} };
+      return { model: {}, data: {} };
     }
   }
 
@@ -129,17 +134,38 @@ export class WebService implements ServerServiceInterface {
     req,
     res: HttpResponseInterface
   ) {
-    var render,
-      viewEngline = handlebars.noConflict(),
-      hbsTemplate = viewEngline.compile(
-        fs.readFileSync(hbsPath).toString() || ""
-      );
 
-    viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
-    viewEngline.registerHelper("append", (...items) =>
-      items.filter(p => typeof p == "string" || typeof p == "number").join("")
-    );
-    viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
+
+    if (!inputObjects.error && typeof WebService.servers[sitePath].onRequest == 'function') {
+      let onReqResult;
+
+      try {
+        onReqResult = await WebService.servers[sitePath].onRequest(
+          req,
+          res,
+          inputObjects,
+          sitePath
+        );
+      } catch (error) {
+        if (error && typeof error == "object") {
+          error.when = "executing server onRequest function";
+          error.path = sitePath + '/server.js';
+        }
+        return WebService.handleError(error, sitePath, req, res);
+      }
+
+      if (res.finished) return;
+
+      if (onReqResult && onReqResult.model) {
+        inputObjects.model = _.extend(inputObjects.model, onReqResult.model);
+      }
+
+      if (onReqResult && onReqResult.data) {
+        inputObjects.data = _.extend(inputObjects.data, onReqResult.data);
+      }
+
+    }
+
     var hbsJsPath = hbsPath + ".js";
 
     if (fs.existsSync(hbsJsPath)) {
@@ -148,6 +174,7 @@ export class WebService implements ServerServiceInterface {
       try {
         hbsJsResult = await WebService.executeHbsJs(
           fs.readFileSync(hbsJsPath).toString(),
+          inputObjects,
           sitePath,
           req,
           res
@@ -165,7 +192,26 @@ export class WebService implements ServerServiceInterface {
       if (hbsJsResult && hbsJsResult.model) {
         inputObjects.model = _.extend(inputObjects.model, hbsJsResult.model);
       }
+
+      if (hbsJsResult && hbsJsResult.data) {
+        inputObjects.data = _.extend(inputObjects.data, hbsJsResult.data);
+      }
+
     }
+
+
+    var render,
+      viewEngline = handlebars.noConflict(),
+      hbsTemplate = viewEngline.compile(
+        fs.readFileSync(hbsPath).toString() || ""
+      );
+
+    viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
+    viewEngline.registerHelper("append", (...items) =>
+      items.filter(p => typeof p == "string" || typeof p == "number").join("")
+    );
+    viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
+
     var partialsPath = join(sitePath, "_partials");
     if (fs.existsSync(partialsPath)) {
       (await WebService.readDirWithGlob(
@@ -224,7 +270,7 @@ export class WebService implements ServerServiceInterface {
         console.log(
           chalk.gray(
             `${Moment().format("HH:mm:ss")} ${domain} ${
-              req.url
+            req.url
             } ${req.ip()} ${req.useragent()}`
           )
         );
@@ -325,7 +371,9 @@ export class WebService implements ServerServiceInterface {
 
       var model: any = {};
 
-      var data: any = {};
+      var data: any = {
+        env: process.env
+      };
       var hbsJsonPath = hbsPath + ".json";
 
       if (fs.existsSync(siteDataPath)) {
@@ -334,7 +382,7 @@ export class WebService implements ServerServiceInterface {
             data,
             JSON.parse(fs.readFileSync(siteDataPath).toString())
           );
-        } catch (error) {}
+        } catch (error) { }
       }
 
       if (data.localization && data.localization.default)
@@ -387,7 +435,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(localeDataPath).toString())
             );
-          } catch (error) {}
+          } catch (error) { }
         } else fs.writeFileSync(localeDataPath, "{}");
       }
 
@@ -400,7 +448,7 @@ export class WebService implements ServerServiceInterface {
               data,
               JSON.parse(fs.readFileSync(urlLocaleDataPath).toString())
             );
-          } catch (error) {}
+          } catch (error) { }
         } else fs.writeFileSync(urlLocaleDataPath, "{}");
       }
 
@@ -420,7 +468,7 @@ export class WebService implements ServerServiceInterface {
             model,
             JSON.parse(fs.readFileSync(hbsJsonPath).toString())
           );
-        } catch (error) {}
+        } catch (error) { }
       }
 
       // res.json({ domain, sitePath, url: req.url, filePath, fileExist: fs.existsSync(filePath), hbsPath });
@@ -452,7 +500,7 @@ export class WebService implements ServerServiceInterface {
 
           return;
         }
-        HttpService.processRequestToStatic(req, res, () => {}, sitePath);
+        HttpService.processRequestToStatic(req, res, () => { }, sitePath);
       }
     } else {
       next();
@@ -485,6 +533,7 @@ export class WebService implements ServerServiceInterface {
   }
 
   async start() {
+
     if (WebService.options.sitePath) {
       console.log("\n\t founded server.js. going to start it ...");
       const serverFilePath = join(WebService.options.sitePath, "server.js");

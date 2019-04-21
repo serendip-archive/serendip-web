@@ -49,7 +49,7 @@ class WebService {
      * @param req server request
      * @param res server response
      */
-    static async executeHbsJs(script, sitePath, req, res) {
+    static async executeHbsJs(script, inputObjects, sitePath, req, res) {
         let hbsJsFunc, hbsJsScript = script;
         try {
             hbsJsFunc = await (async function () {
@@ -74,7 +74,7 @@ class WebService {
             var hbsJsFuncResult;
             try {
                 hbsJsFuncResult = (async function () {
-                    return await hbsJsFunc();
+                    return await hbsJsFunc(inputObjects.data, inputObjects.model);
                 })();
             }
             catch (e) {
@@ -84,11 +84,11 @@ class WebService {
                 return hbsJsFuncResult;
             }
             else {
-                return { model: {} };
+                return { model: {}, data: {} };
             }
         }
         else {
-            return { model: {} };
+            return { model: {}, data: {} };
         }
     }
     static readDirWithGlob(pathPattern) {
@@ -97,15 +97,32 @@ class WebService {
         });
     }
     static async renderHbs(inputObjects, hbsPath, sitePath, req, res) {
-        var render, viewEngline = handlebars.noConflict(), hbsTemplate = viewEngline.compile(fs.readFileSync(hbsPath).toString() || "");
-        viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
-        viewEngline.registerHelper("append", (...items) => items.filter(p => typeof p == "string" || typeof p == "number").join(""));
-        viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
+        if (!inputObjects.error && typeof WebService.servers[sitePath].onRequest == 'function') {
+            let onReqResult;
+            try {
+                onReqResult = await WebService.servers[sitePath].onRequest(req, res, inputObjects, sitePath);
+            }
+            catch (error) {
+                if (error && typeof error == "object") {
+                    error.when = "executing server onRequest function";
+                    error.path = sitePath + '/server.js';
+                }
+                return WebService.handleError(error, sitePath, req, res);
+            }
+            if (res.finished)
+                return;
+            if (onReqResult && onReqResult.model) {
+                inputObjects.model = _.extend(inputObjects.model, onReqResult.model);
+            }
+            if (onReqResult && onReqResult.data) {
+                inputObjects.data = _.extend(inputObjects.data, onReqResult.data);
+            }
+        }
         var hbsJsPath = hbsPath + ".js";
         if (fs.existsSync(hbsJsPath)) {
             let hbsJsResult;
             try {
-                hbsJsResult = await WebService.executeHbsJs(fs.readFileSync(hbsJsPath).toString(), sitePath, req, res);
+                hbsJsResult = await WebService.executeHbsJs(fs.readFileSync(hbsJsPath).toString(), inputObjects, sitePath, req, res);
             }
             catch (error) {
                 if (error && typeof error == "object") {
@@ -119,7 +136,14 @@ class WebService {
             if (hbsJsResult && hbsJsResult.model) {
                 inputObjects.model = _.extend(inputObjects.model, hbsJsResult.model);
             }
+            if (hbsJsResult && hbsJsResult.data) {
+                inputObjects.data = _.extend(inputObjects.data, hbsJsResult.data);
+            }
         }
+        var render, viewEngline = handlebars.noConflict(), hbsTemplate = viewEngline.compile(fs.readFileSync(hbsPath).toString() || "");
+        viewEngline.registerHelper("json", obj => JSON.stringify(obj, null, 2));
+        viewEngline.registerHelper("append", (...items) => items.filter(p => typeof p == "string" || typeof p == "number").join(""));
+        viewEngline.registerHelper("unsafe", c => new handlebars.SafeString(c));
         var partialsPath = path_1.join(sitePath, "_partials");
         if (fs.existsSync(partialsPath)) {
             (await WebService.readDirWithGlob(path_1.join(partialsPath, "**/*.hbs"))).forEach(partialFilePath => {
@@ -223,7 +247,9 @@ class WebService {
             }
             var siteDataPath = path_1.join(sitePath, "data.json");
             var model = {};
-            var data = {};
+            var data = {
+                env: process.env
+            };
             var hbsJsonPath = hbsPath + ".json";
             if (fs.existsSync(siteDataPath)) {
                 try {
