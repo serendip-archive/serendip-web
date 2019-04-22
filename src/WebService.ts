@@ -22,6 +22,7 @@ import * as SMP from "serendip-mongodb-provider";
 import * as SF from "serendip";
 import { locales } from "./locales";
 import { ServerServiceInterface } from "serendip-business-model";
+import * as Cookies from 'cookies';
 
 export class WebService implements ServerServiceInterface {
   static options: {
@@ -37,8 +38,10 @@ export class WebService implements ServerServiceInterface {
       _,
       request: Request,
       moment: Moment,
+      cookies: Cookies,
       handlebars: handlebars,
       utils: sUtils,
+      fs: fs,
       SMP,
       SBC,
       SF
@@ -92,6 +95,8 @@ export class WebService implements ServerServiceInterface {
         if (!modules) modules = WebService.helperModules();
 
         // overwrite to block access to global process
+
+
 
         const process = null;
 
@@ -366,15 +371,32 @@ export class WebService implements ServerServiceInterface {
         );
         return;
       }
+      const filePath = join(sitePath, req.url.split("?")[0] || "/");
 
-      var siteDataPath = join(sitePath, "data.json");
+      let hbsPath = '';
+      if (filePath.endsWith("/") || filePath.endsWith("\\")) {
+        hbsPath =
+          filePath + 'index.hbs';
 
-      var model: any = {};
+      } else {
 
-      var data: any = {
+        if (await fs.pathExists(filePath + '/index.hbs')) {
+          hbsPath =
+            filePath + '/index.hbs';
+        } else {
+          hbsPath =
+            filePath + '.hbs';
+        }
+
+      }
+      const siteDataPath = join(sitePath, "data.json");
+
+      let model: any = {};
+
+      let data: any = {
         env: process.env
       };
-      var hbsJsonPath = hbsPath + ".json";
+      const hbsJsonPath = hbsPath + ".json";
 
       if (fs.existsSync(siteDataPath)) {
         try {
@@ -390,7 +412,7 @@ export class WebService implements ServerServiceInterface {
 
       //  if (!sitePath.endsWith("/") || ) sitePath += "/";
 
-      var localization = {};
+      let localization = {};
 
       if (locale) {
         var tempLocale =
@@ -403,7 +425,7 @@ export class WebService implements ServerServiceInterface {
         };
       }
 
-      var urlLocale = req.url.split("?")[0].split("/")[1] || "";
+      let urlLocale = req.url.split("?")[0].split("/")[1] || "";
       if (urlLocale.indexOf("-") == 2) {
         urlLocale =
           urlLocale.split("-")[0] + "-" + urlLocale.split("-")[1].toUpperCase();
@@ -427,7 +449,7 @@ export class WebService implements ServerServiceInterface {
       }
 
       if (locale) {
-        var localeDataPath = join(sitePath, "data." + locale + ".json");
+        const localeDataPath = join(sitePath, "data." + locale + ".json");
 
         if (fs.existsSync(localeDataPath)) {
           try {
@@ -440,7 +462,7 @@ export class WebService implements ServerServiceInterface {
       }
 
       if (urlLocale) {
-        var urlLocaleDataPath = join(sitePath, "data." + urlLocale + ".json");
+        const urlLocaleDataPath = join(sitePath, "data." + urlLocale + ".json");
 
         if (fs.existsSync(urlLocaleDataPath)) {
           try {
@@ -454,13 +476,8 @@ export class WebService implements ServerServiceInterface {
 
       if (urlLocale) locale = urlLocale;
 
-      var filePath = join(sitePath, req.url.split("?")[0] || "/");
 
-      var hbsPath =
-        filePath +
-        (filePath.endsWith("/") || filePath.endsWith("\\")
-          ? "index.hbs"
-          : ".hbs");
+
 
       if (fs.existsSync(hbsJsonPath)) {
         try {

@@ -1,6 +1,6 @@
 {
   "name": "serendip-web",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "description": "It's a lightweight web server for creating websites using handlebars and javascript.",
   "main": "index.js",
   "bin": {
@@ -21,9 +21,11 @@
   },
   "homepage": "https://github.com/m-esm/serendip-web#readme",
   "dependencies": {
+    "@types/cookies": "^0.7.2",
     "argv": "0.0.2",
     "chalk": "^2.4.1",
     "clear": "^0.1.0",
+    "cookies": "^0.7.3",
     "dotenv": "^6.2.0",
     "figlet": "^1.2.1",
     "fs-extra": "^7.0.1",
@@ -34,9 +36,11 @@
     "moment": "^2.23.0",
     "moment-jalaali": "^0.8.3",
     "request": "^2.88.0",
-    "serendip": "^1.1.9",
+    "serendip": "^1.1.15",
     "serendip-business-client": "^1.0.3",
-    "serendip-utility": "^1.1.0",
+    "serendip-business-model": "^1.1.10",
+    "serendip-mongodb-provider": "^1.0.12",
+    "serendip-utility": "^1.1.2",
     "underscore": "^1.9.1"
   },
   "devDependencies": {

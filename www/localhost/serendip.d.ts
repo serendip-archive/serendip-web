@@ -6,6 +6,8 @@ import * as moment from "moment";
 import * as sutils from "serendip-utility";
 import * as SerendipBusinessClient from "serendip-business-client";
 import * as Handlebars from "handlebars";
+import * as Cookies from "cookies";
+import * as FsExtra from "fs-extra";
 declare global {
   let modules: {
 
@@ -19,6 +21,8 @@ declare global {
     handlebars: typeof Handlebars;
     moment: typeof moment;
     utils: typeof sutils;
+    cookies: typeof Cookies;
+    fs: typeof FsExtra;
 
     sbc: {
       db: SerendipBusinessClient.DbService;

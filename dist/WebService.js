@@ -13,7 +13,9 @@ const sUtils = require("serendip-utility");
 const _ = require("underscore");
 const SBC = require("serendip-business-client");
 const SMP = require("serendip-mongodb-provider");
+const SF = require("serendip");
 const locales_1 = require("./locales");
+const Cookies = require("cookies");
 class WebService {
     constructor(httpService) {
         this.httpService = httpService;
@@ -27,10 +29,13 @@ class WebService {
             _,
             request: Request,
             moment: Moment,
+            cookies: Cookies,
             handlebars: handlebars,
             utils: sUtils,
+            fs: fs,
             SMP,
-            SBC
+            SBC,
+            SF
         });
     }
     static configure(opts) {
@@ -245,12 +250,28 @@ class WebService {
                 }, WebService.getMessagePagePath(), sitePath, req, res);
                 return;
             }
-            var siteDataPath = path_1.join(sitePath, "data.json");
-            var model = {};
-            var data = {
+            const filePath = path_1.join(sitePath, req.url.split("?")[0] || "/");
+            let hbsPath = '';
+            if (filePath.endsWith("/") || filePath.endsWith("\\")) {
+                hbsPath =
+                    filePath + 'index.hbs';
+            }
+            else {
+                if (await fs.pathExists(filePath + '/index.hbs')) {
+                    hbsPath =
+                        filePath + '/index.hbs';
+                }
+                else {
+                    hbsPath =
+                        filePath + '.hbs';
+                }
+            }
+            const siteDataPath = path_1.join(sitePath, "data.json");
+            let model = {};
+            let data = {
                 env: process.env
             };
-            var hbsJsonPath = hbsPath + ".json";
+            const hbsJsonPath = hbsPath + ".json";
             if (fs.existsSync(siteDataPath)) {
                 try {
                     data = _.extend(data, JSON.parse(fs.readFileSync(siteDataPath).toString()));
@@ -260,7 +281,7 @@ class WebService {
             if (data.localization && data.localization.default)
                 locale = data.localization.default;
             //  if (!sitePath.endsWith("/") || ) sitePath += "/";
-            var localization = {};
+            let localization = {};
             if (locale) {
                 var tempLocale = locale.split("-")[0] + "-" + locale.split("-")[1].toUpperCase();
                 localization = {
@@ -270,7 +291,7 @@ class WebService {
                     rtl: locales_1.locales[tempLocale][2] || null
                 };
             }
-            var urlLocale = req.url.split("?")[0].split("/")[1] || "";
+            let urlLocale = req.url.split("?")[0].split("/")[1] || "";
             if (urlLocale.indexOf("-") == 2) {
                 urlLocale =
                     urlLocale.split("-")[0] + "-" + urlLocale.split("-")[1].toUpperCase();
@@ -292,7 +313,7 @@ class WebService {
                     urlLocale = null;
             }
             if (locale) {
-                var localeDataPath = path_1.join(sitePath, "data." + locale + ".json");
+                const localeDataPath = path_1.join(sitePath, "data." + locale + ".json");
                 if (fs.existsSync(localeDataPath)) {
                     try {
                         data = _.extend(data, JSON.parse(fs.readFileSync(localeDataPath).toString()));
@@ -303,7 +324,7 @@ class WebService {
                     fs.writeFileSync(localeDataPath, "{}");
             }
             if (urlLocale) {
-                var urlLocaleDataPath = path_1.join(sitePath, "data." + urlLocale + ".json");
+                const urlLocaleDataPath = path_1.join(sitePath, "data." + urlLocale + ".json");
                 if (fs.existsSync(urlLocaleDataPath)) {
                     try {
                         data = _.extend(data, JSON.parse(fs.readFileSync(urlLocaleDataPath).toString()));
@@ -315,11 +336,6 @@ class WebService {
             }
             if (urlLocale)
                 locale = urlLocale;
-            var filePath = path_1.join(sitePath, req.url.split("?")[0] || "/");
-            var hbsPath = filePath +
-                (filePath.endsWith("/") || filePath.endsWith("\\")
-                    ? "index.hbs"
-                    : ".hbs");
             if (fs.existsSync(hbsJsonPath)) {
                 try {
                     model = _.extend(model, JSON.parse(fs.readFileSync(hbsJsonPath).toString()));
