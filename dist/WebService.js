@@ -8,6 +8,7 @@ const htmlMinifier = require("html-minifier");
 const Moment = require("moment");
 const path_1 = require("path");
 const Request = require("request");
+const mime = require("mime-types");
 const serendip_1 = require("serendip");
 const sUtils = require("serendip-utility");
 const _ = require("underscore");
@@ -266,6 +267,19 @@ class WebService {
                         filePath + '.hbs';
                 }
             }
+            if (!fs.existsSync(hbsPath)) {
+                if (!fs.existsSync(filePath)) {
+                    res.statusCode = 404;
+                    return WebService.renderHbs({
+                        error: {
+                            message: req.url + " not found!",
+                            code: 404
+                        }
+                    }, WebService.getMessagePagePath(), sitePath, req, res);
+                }
+                else
+                    return serendip_1.HttpService.processRequestToStatic(req, res, () => { }, sitePath);
+            }
             const siteDataPath = path_1.join(sitePath, "data.json");
             let model = {};
             let data = {
@@ -344,27 +358,68 @@ class WebService {
             }
             // res.json({ domain, sitePath, url: req.url, filePath, fileExist: fs.existsSync(filePath), hbsPath });
             // return;
-            if (fs.existsSync(hbsPath)) {
-                WebService.renderHbs({ model, data, locale: localization }, hbsPath, sitePath, req, res);
-            }
-            else {
-                if (!fs.existsSync(filePath)) {
-                    res.statusCode = 404;
-                    WebService.renderHbs({
-                        error: {
-                            message: req.url + " not found!",
-                            code: 404
-                        }
-                    }, WebService.getMessagePagePath(), sitePath, req, res);
-                    return;
-                }
-                serendip_1.HttpService.processRequestToStatic(req, res, () => { }, sitePath);
-            }
+            WebService.renderHbs({ model, data, locale: localization }, hbsPath, sitePath, req, res);
         }
         else {
             next();
         }
         // next();
+    }
+    static async processRequestToStatic(req, res, callback, staticPath) {
+        var filePath = path_1.join(staticPath || serendip_1.HttpService.options.staticPath, req.url.split("?")[0]);
+        fs.stat(filePath, (err, stat) => {
+            if (err) {
+                res.writeHead(404);
+                res.end();
+                return callback(404);
+            }
+            if (stat.isDirectory())
+                filePath = path_1.join(filePath, "index.html");
+            fs.exists(filePath, exist => {
+                if (exist) {
+                    let range = (req.headers.range) ? req.headers.range.toString().replace(/bytes=/, "").split("-") : [];
+                    range[0] = range[0] ? parseInt(range[0], 10) : 0;
+                    range[1] = range[1] ? (parseInt(range[1], 10) || 0) : range[0] + ((1024 * 1024) - 1);
+                    if (range[1] >= stat.size) {
+                        range[1] = stat.size - 1;
+                    }
+                    range = { start: range[0], end: range[1] };
+                    if (!req.headers.range) {
+                        res.writeHead(200, {
+                            "Content-Length": stat.size,
+                            "Content-Type": mime.lookup(filePath).toString(),
+                            'Accept-Ranges': 'bytes',
+                            "ETag": process.env.etag
+                        });
+                        var readStream = fs.createReadStream(filePath);
+                        readStream.pipe(res);
+                        callback(200, filePath);
+                    }
+                    else {
+                        res.writeHead(206, {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache',
+                            'Expires': 0,
+                            'Content-Type': mime.lookup(filePath),
+                            'Content-Disposition': `inline; filename=${encodeURIComponent(filePath.split('/')[filePath.split('/').length - 1])}`,
+                            'Accept-Ranges': 'bytes',
+                            'Content-Range': 'bytes ' + range.start + '-' + range.end + '/' + (stat.size),
+                            'Content-Length': range.end - range.start + 1,
+                            "ETag": process.env.etag
+                        });
+                        fs.createReadStream(filePath, {
+                            start: range.start,
+                            end: range.end
+                        }).pipe(res);
+                    }
+                }
+                else {
+                    res.writeHead(404);
+                    res.end();
+                    return callback(404);
+                }
+            });
+        });
     }
     static getMessagePagePath() {
         if (WebService.options.sitesPath) {
